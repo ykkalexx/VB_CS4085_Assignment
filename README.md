@@ -7,17 +7,11 @@ Current Status:
 - Added UV coordinates
 - Added material information
 - Added object names and hierarchy
+- Made the 3D Object Compatible with UE5
 
 To do :
 
 - Custom importer read file format and intrept the data to convert it into UE asset data:
-  For UE5:
-- Tangent Info
-- Material Properties
-- Collison Data
-- LOD
-- Object Properties
-- Find what UE5 Needs from a 3D model
 
 Optional :
 
