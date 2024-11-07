@@ -7,6 +7,8 @@ rt = pymxs.runtime
 class Custom3DExporter:
     def __init__(self):
         self.objects_data = []
+        self.material_ids = {}
+        self.material_count = 0
         
     def export_file(self):
         filepath = rt.getSaveFileName(
@@ -19,6 +21,14 @@ class Custom3DExporter:
                 with open(filepath, 'w') as file:
                     self._write_header(file)
                     
+                    # Write materials section
+                    file.write("# Materials\n")
+                    self._write_materials(file)
+                    
+                    # Write object hierarchy
+                    file.write("\n# Object Hierarchy\n")
+                    self._write_hierarchy(file, rt.rootNode, 0)
+                    
                     # Get selected object
                     obj = rt.selection[0]
                     print(f"Processing object: {obj.name}")
@@ -28,7 +38,7 @@ class Custom3DExporter:
                         rt.convertTo(obj, rt.Editable_Mesh)
                     
                     # Write vertices
-                    file.write(f"# Vertices for object: {obj.name}\n")
+                    file.write(f"\n# Vertices for object: {obj.name}\n")
                     num_verts = rt.meshop.getNumVerts(obj)
                     
                     for i in range(1, num_verts + 1):
@@ -68,12 +78,12 @@ class Custom3DExporter:
                             
                         file.write(f"vn {normal.x:.6f} {normal.y:.6f} {normal.z:.6f}\n")
                     
-                    # Write faces
+                    # Write faces with material information
                     file.write("\n# Faces\n")
                     num_faces = rt.meshop.getNumFaces(obj)
                     
                     # Check for UVs
-                    has_uvs = rt.meshop.getMapSupport(obj, 1)  # 1 is the default UV channel
+                    has_uvs = rt.meshop.getMapSupport(obj, 1)
                     
                     if has_uvs:
                         # Get UV coordinates
@@ -84,24 +94,81 @@ class Custom3DExporter:
                             if uv:
                                 file.write(f"vt {uv.x:.6f} {uv.y:.6f}\n")
                         
-                        # Write faces with UVs
+                        # Write faces with UVs and material IDs
                         for i in range(1, num_faces + 1):
                             face = rt.meshop.getFace(obj, i)
                             map_face = rt.meshop.getMapFace(obj, 1, i)
+                            mat_id = rt.meshop.getFaceMatID(obj, i)
                             file.write(f"f {face.x}/{map_face.x}/{i} "
                                      f"{face.y}/{map_face.y}/{i} "
-                                     f"{face.z}/{map_face.z}/{i}\n")
+                                     f"{face.z}/{map_face.z}/{i} "
+                                     f"mat_id {mat_id}\n")
                     else:
-                        # Write faces without UVs
+                        # Write faces without UVs but with material IDs
                         for i in range(1, num_faces + 1):
                             face = rt.meshop.getFace(obj, i)
-                            file.write(f"f {face.x}//{i} {face.y}//{i} {face.z}//{i}\n")
+                            mat_id = rt.meshop.getFaceMatID(obj, i)
+                            file.write(f"f {face.x}//{i} {face.y}//{i} {face.z}//{i} "
+                                     f"mat_id {mat_id}\n")
                     
                     self._write_footer(file)
                 rt.messageBox("Export completed successfully!")
             except Exception as e:
                 print(f"Export error: {str(e)}")
                 rt.messageBox(f"Error during export: {str(e)}")
+
+    def _write_materials(self, file: TextIO):
+        """Write materials information"""
+        obj = rt.selection[0]
+        if obj.material is None:
+            # Write default material if none exists
+            file.write(f"material \"Default_Material\" {{\n")
+            file.write(f"    diffuse 0.700 0.700 0.700\n")
+            file.write(f"    ambient 0.300 0.300 0.300\n")
+            file.write(f"    specular 1.000 1.000 1.000\n")
+            file.write(f"    opacity 1.000\n")
+            file.write("}\n")
+        else:
+            mat = obj.material
+            file.write(f"material \"{mat.name if hasattr(mat, 'name') else 'Material1'}\" {{\n")
+            
+            # Write material properties
+            if hasattr(mat, 'diffuse'):
+                file.write(f"    diffuse {mat.diffuse.r:.3f} {mat.diffuse.g:.3f} {mat.diffuse.b:.3f}\n")
+            if hasattr(mat, 'ambient'):
+                file.write(f"    ambient {mat.ambient.r:.3f} {mat.ambient.g:.3f} {mat.ambient.b:.3f}\n")
+            if hasattr(mat, 'specular'):
+                file.write(f"    specular {mat.specular.r:.3f} {mat.specular.g:.3f} {mat.specular.b:.3f}\n")
+            if hasattr(mat, 'opacity'):
+                file.write(f"    opacity {mat.opacity:.3f}\n")
+            
+            file.write("}\n")
+
+    def _write_hierarchy(self, file: TextIO, node, level):
+        """Write node hierarchy"""
+        # Write only the selected object for now
+        obj = rt.selection[0]
+        if obj is not None:
+            file.write(f"node \"{obj.name}\" {{\n")
+            
+            # Write transform
+            pos = obj.pos
+            rot = obj.rotation
+            scale = obj.scale
+            
+            file.write("    transform {\n")
+            file.write(f"        pos [{pos.x:.6f} {pos.y:.6f} {pos.z:.6f}]\n")
+            file.write(f"        rot [{rot.x:.6f} {rot.y:.6f} {rot.z:.6f}]\n")
+            file.write(f"        scale [{scale.x:.6f} {scale.y:.6f} {scale.z:.6f}]\n")
+            file.write("    }\n")
+            
+            # Write material reference
+            mat_name = "Default_Material"
+            if obj.material is not None:
+                mat_name = obj.material.name if hasattr(obj.material, 'name') else 'Material1'
+            file.write(f"    material \"{mat_name}\"\n")
+            
+            file.write("}\n")
 
     def _write_header(self, file: TextIO):
         file.write("FORMAT Custom3D 1.0\n\n")
