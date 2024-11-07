@@ -48,28 +48,24 @@ class Custom3DExporter:
                     # Write vertex normals
                     file.write("\n# Vertex normals\n")
                     
-                    # Calculate face normals first
+                    # Calculate face normals
                     for i in range(1, rt.meshop.getNumFaces(obj) + 1):
                         face_center = rt.meshop.getFaceCenter(obj, i)
                         face = rt.meshop.getFace(obj, i)
                         
-                        # Get vertices of the face
                         v1 = rt.meshop.getVert(obj, face.x)
                         v2 = rt.meshop.getVert(obj, face.y)
                         v3 = rt.meshop.getVert(obj, face.z)
                         
-                        # Calculate face normal
                         edge1 = rt.Point3(v2.x - v1.x, v2.y - v1.y, v2.z - v1.z)
                         edge2 = rt.Point3(v3.x - v1.x, v3.y - v1.y, v3.z - v1.z)
                         
-                        # Cross product for normal
                         normal = rt.Point3(
                             edge1.y * edge2.z - edge1.z * edge2.y,
                             edge1.z * edge2.x - edge1.x * edge2.z,
                             edge1.x * edge2.y - edge1.y * edge2.x
                         )
                         
-                        # Normalize
                         length = (normal.x**2 + normal.y**2 + normal.z**2)**0.5
                         if length > 0:
                             normal.x /= length
@@ -78,38 +74,80 @@ class Custom3DExporter:
                             
                         file.write(f"vn {normal.x:.6f} {normal.y:.6f} {normal.z:.6f}\n")
                     
-                    # Write faces with material information
-                    file.write("\n# Faces\n")
-                    num_faces = rt.meshop.getNumFaces(obj)
+                    # Write tangents for normal mapping
+                    file.write("\n# Tangents\n")
+                    for i in range(1, num_verts + 1):
+                        # Default tangent along X axis
+                        file.write(f"vtan 1.000000 0.000000 0.000000\n")
                     
-                    # Check for UVs
+                    # Write UVs and faces
                     has_uvs = rt.meshop.getMapSupport(obj, 1)
-                    
                     if has_uvs:
-                        # Get UV coordinates
-                        num_map_verts = rt.meshop.getNumMapVerts(obj, 1)
                         file.write("\n# UV Coordinates\n")
+                        num_map_verts = rt.meshop.getNumMapVerts(obj, 1)
                         for i in range(1, num_map_verts + 1):
                             uv = rt.meshop.getMapVert(obj, 1, i)
                             if uv:
                                 file.write(f"vt {uv.x:.6f} {uv.y:.6f}\n")
-                        
-                        # Write faces with UVs and material IDs
+                    
+                    # Write faces with material IDs
+                    file.write("\n# Faces\n")
+                    num_faces = rt.meshop.getNumFaces(obj)
+                    
+                    if has_uvs:
                         for i in range(1, num_faces + 1):
                             face = rt.meshop.getFace(obj, i)
                             map_face = rt.meshop.getMapFace(obj, 1, i)
                             mat_id = rt.meshop.getFaceMatID(obj, i)
                             file.write(f"f {face.x}/{map_face.x}/{i} "
-                                     f"{face.y}/{map_face.y}/{i} "
-                                     f"{face.z}/{map_face.z}/{i} "
-                                     f"mat_id {mat_id}\n")
+                                    f"{face.y}/{map_face.y}/{i} "
+                                    f"{face.z}/{map_face.z}/{i} "
+                                    f"mat_id {mat_id}\n")
                     else:
-                        # Write faces without UVs but with material IDs
                         for i in range(1, num_faces + 1):
                             face = rt.meshop.getFace(obj, i)
                             mat_id = rt.meshop.getFaceMatID(obj, i)
                             file.write(f"f {face.x}//{i} {face.y}//{i} {face.z}//{i} "
-                                     f"mat_id {mat_id}\n")
+                                    f"mat_id {mat_id}\n")
+                    
+                    # Write collision data
+                    file.write("\n# Collision\n")
+                    file.write("collision {\n")
+                    
+                    # Calculate bounding box
+                    min_x = min_y = min_z = float('inf')
+                    max_x = max_y = max_z = float('-inf')
+                    
+                    for i in range(1, num_verts + 1):
+                        vert = rt.meshop.getVert(obj, i)
+                        min_x = min(min_x, vert.x)
+                        min_y = min(min_y, vert.y)
+                        min_z = min(min_z, vert.z)
+                        max_x = max(max_x, vert.x)
+                        max_y = max(max_y, vert.y)
+                        max_z = max(max_z, vert.z)
+                    
+                    file.write(f"    box {{\n")
+                    file.write(f"        min [{min_x:.6f} {min_y:.6f} {min_z:.6f}]\n")
+                    file.write(f"        max [{max_x:.6f} {max_y:.6f} {max_z:.6f}]\n")
+                    file.write(f"    }}\n")
+                    file.write("}\n")
+                    
+                    # Write LOD information
+                    file.write("\n# LOD Information\n")
+                    file.write("lod {\n")
+                    file.write(f"    screenSize 1.0\n")
+                    file.write(f"    quality \"full\"\n")
+                    file.write("}\n")
+                    
+                    # Write additional object properties
+                    file.write("\n# Object Properties\n")
+                    file.write("properties {\n")
+                    file.write(f"    mobility \"static\"\n")
+                    file.write(f"    castShadows 1\n")
+                    file.write(f"    canBeNavMeshObstacle 1\n")
+                    file.write(f"    hidden 0\n")
+                    file.write("}\n")
                     
                     self._write_footer(file)
                 rt.messageBox("Export completed successfully!")
@@ -121,18 +159,22 @@ class Custom3DExporter:
         """Write materials information"""
         obj = rt.selection[0]
         if obj.material is None:
-            # Write default material if none exists
+            # Write default PBR material
             file.write(f"material \"Default_Material\" {{\n")
             file.write(f"    diffuse 0.700 0.700 0.700\n")
             file.write(f"    ambient 0.300 0.300 0.300\n")
             file.write(f"    specular 1.000 1.000 1.000\n")
+            file.write(f"    roughness 0.500\n")
+            file.write(f"    metallic 0.000\n")
             file.write(f"    opacity 1.000\n")
+            file.write(f"    materialType \"PBR\"\n")
+            file.write(f"    twoSided 0\n")
             file.write("}\n")
         else:
             mat = obj.material
             file.write(f"material \"{mat.name if hasattr(mat, 'name') else 'Material1'}\" {{\n")
             
-            # Write material properties
+            # Standard properties
             if hasattr(mat, 'diffuse'):
                 file.write(f"    diffuse {mat.diffuse.r:.3f} {mat.diffuse.g:.3f} {mat.diffuse.b:.3f}\n")
             if hasattr(mat, 'ambient'):
@@ -141,6 +183,24 @@ class Custom3DExporter:
                 file.write(f"    specular {mat.specular.r:.3f} {mat.specular.g:.3f} {mat.specular.b:.3f}\n")
             if hasattr(mat, 'opacity'):
                 file.write(f"    opacity {mat.opacity:.3f}\n")
+                
+            # PBR properties
+            if hasattr(mat, 'glossiness'):
+                roughness = 1.0 - (mat.glossiness / 100.0)  # Convert glossiness to roughness
+                file.write(f"    roughness {roughness:.3f}\n")
+            file.write(f"    metallic 0.000\n")  # Default metallic value
+            
+            # Material type and properties
+            file.write(f"    materialType \"PBR\"\n")
+            file.write(f"    twoSided {1 if hasattr(mat, 'twoSided') and mat.twoSided else 0}\n")
+            
+            # Texture maps
+            if hasattr(mat, 'diffuseMap') and mat.diffuseMap:
+                file.write(f"    diffuseMap \"{mat.diffuseMap.filename}\"\n")
+            if hasattr(mat, 'bumpMap') and mat.bumpMap:
+                file.write(f"    normalMap \"{mat.bumpMap.filename}\"\n")
+            if hasattr(mat, 'specularMap') and mat.specularMap:
+                file.write(f"    specularMap \"{mat.specularMap.filename}\"\n")
             
             file.write("}\n")
 

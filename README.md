@@ -10,7 +10,13 @@ Current Status:
 
 To do :
 
-- Custom importer read file format and intrept the data to convert it into UE asset data
+- Custom importer read file format and intrept the data to convert it into UE asset data:
+  For UE5:
+- Tangent Info
+- Material Properties
+- Collison Data
+- LOD
+- Object Properties
 - Find what UE5 Needs from a 3D model
 
 Optional :
