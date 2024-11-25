@@ -1,0 +1,40 @@
+{
+    "Version": "1.2",
+    "Data": {
+        "Source": "c:\\assignments\\vb_cs4085_assignment\\ue5_plugin\\plugin_scene\\plugins\\format3d\\intermediate\\build\\win64\\x64\\unrealeditor\\development\\format3d\\module.format3d.cpp",
+        "ProvidedModule": "",
+        "PCH": "c:\\assignments\\vb_cs4085_assignment\\ue5_plugin\\plugin_scene\\intermediate\\build\\win64\\x64\\plugin_sceneeditor\\development\\unrealed\\sharedpch.unrealed.shadowerrors.inclorderunreal5_1.h.pch",
+        "Includes": [
+            "c:\\assignments\\vb_cs4085_assignment\\ue5_plugin\\plugin_scene\\plugins\\format3d\\intermediate\\build\\win64\\x64\\unrealeditor\\development\\format3d\\definitions.format3d.h",
+            "c:\\assignments\\vb_cs4085_assignment\\ue5_plugin\\plugin_scene\\plugins\\format3d\\intermediate\\build\\win64\\unrealeditor\\inc\\format3d\\uht\\format3d.gen.cpp",
+            "c:\\assignments\\vb_cs4085_assignment\\ue5_plugin\\plugin_scene\\plugins\\format3d\\source\\format3d\\public\\format3d.h",
+            "c:\\program files\\epic games\\ue_5.2\\engine\\source\\runtime\\meshdescription\\public\\meshdescription.h",
+            "c:\\program files\\epic games\\ue_5.2\\engine\\source\\runtime\\core\\public\\algo\\accumulate.h",
+            "c:\\program files\\epic games\\ue_5.2\\engine\\source\\runtime\\meshdescription\\public\\meshattributearray.h",
+            "c:\\program files\\epic games\\ue_5.2\\engine\\source\\runtime\\meshdescription\\public\\attributearraycontainer.h",
+            "c:\\program files\\epic games\\ue_5.2\\engine\\source\\runtime\\core\\public\\algo\\rotate.h",
+            "c:\\program files\\epic games\\ue_5.2\\engine\\source\\runtime\\meshdescription\\public\\meshelementremappings.h",
+            "c:\\program files\\epic games\\ue_5.2\\engine\\source\\runtime\\meshdescription\\public\\meshelementarray.h",
+            "c:\\program files\\epic games\\ue_5.2\\engine\\source\\runtime\\meshdescription\\public\\meshelementcontainer.h",
+            "c:\\program files\\epic games\\ue_5.2\\engine\\source\\runtime\\meshdescription\\public\\meshelementindexer.h",
+            "c:\\program files\\epic games\\ue_5.2\\engine\\intermediate\\build\\win64\\unrealeditor\\inc\\meshdescription\\uht\\meshdescription.generated.h",
+            "c:\\program files\\epic games\\ue_5.2\\engine\\source\\runtime\\staticmeshdescription\\public\\staticmeshattributes.h",
+            "c:\\program files\\epic games\\ue_5.2\\engine\\source\\runtime\\meshdescription\\public\\meshattributes.h",
+            "c:\\program files\\epic games\\ue_5.2\\engine\\source\\editor\\unrealed\\public\\editorreimporthandler.h",
+            "c:\\program files\\epic games\\ue_5.2\\engine\\source\\runtime\\core\\public\\misc\\feedbackcontext.h",
+            "c:\\program files\\epic games\\ue_5.2\\engine\\source\\runtime\\core\\public\\misc\\slowtaskstack.h",
+            "c:\\assignments\\vb_cs4085_assignment\\ue5_plugin\\plugin_scene\\plugins\\format3d\\intermediate\\build\\win64\\unrealeditor\\inc\\format3d\\uht\\format3d.generated.h",
+            "c:\\assignments\\vb_cs4085_assignment\\ue5_plugin\\plugin_scene\\plugins\\format3d\\intermediate\\build\\win64\\unrealeditor\\inc\\format3d\\uht\\format3d.init.gen.cpp",
+            "c:\\assignments\\vb_cs4085_assignment\\ue5_plugin\\plugin_scene\\plugins\\format3d\\source\\format3d\\private\\format3d.cpp",
+            "c:\\program files\\epic games\\ue_5.2\\engine\\source\\runtime\\assetregistry\\public\\assetregistry\\assetregistrymodule.h",
+            "c:\\program files\\epic games\\ue_5.2\\engine\\source\\runtime\\assetregistry\\public\\assetregistry\\iassetregistry.h",
+            "c:\\program files\\epic games\\ue_5.2\\engine\\source\\runtime\\coreuobject\\public\\misc\\assetregistryinterface.h",
+            "c:\\program files\\epic games\\ue_5.2\\engine\\intermediate\\build\\win64\\unrealeditor\\inc\\assetregistry\\uht\\iassetregistry.generated.h",
+            "c:\\program files\\epic games\\ue_5.2\\engine\\source\\runtime\\core\\public\\misc\\filehelper.h",
+            "c:\\program files\\epic games\\ue_5.2\\engine\\source\\runtime\\engine\\classes\\editorframework\\assetimportdata.h",
+            "c:\\program files\\epic games\\ue_5.2\\engine\\intermediate\\build\\win64\\unrealeditor\\inc\\engine\\uht\\assetimportdata.generated.h"
+        ],
+        "ImportedModules": [],
+        "ImportedHeaderUnits": []
+    }
+}

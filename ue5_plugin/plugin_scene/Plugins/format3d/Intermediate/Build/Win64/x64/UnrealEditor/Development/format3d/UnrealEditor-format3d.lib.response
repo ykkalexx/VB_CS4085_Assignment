@@ -1,0 +1,12 @@
+/NOLOGO
+/errorReport:prompt
+/MACHINE:x64
+/SUBSYSTEM:WINDOWS
+/DEF
+/NAME:"UnrealEditor-format3d.dll"
+/IGNORE:4221
+/NODEFAULTLIB
+"C:\Assignments\VB_CS4085_Assignment\ue5_plugin\plugin_scene\Intermediate\Build\Win64\x64\plugin_sceneEditor\Development\UnrealEd\SharedPCH.UnrealEd.ShadowErrors.InclOrderUnreal5_1.h.obj"
+"C:\Assignments\VB_CS4085_Assignment\ue5_plugin\plugin_scene\Plugins\format3d\Intermediate\Build\Win64\x64\UnrealEditor\Development\format3d\Module.format3d.cpp.obj"
+"C:\Assignments\VB_CS4085_Assignment\ue5_plugin\plugin_scene\Plugins\format3d\Intermediate\Build\Win64\x64\UnrealEditor\Development\format3d\Default.rc2.res"
+/OUT:"C:\Assignments\VB_CS4085_Assignment\ue5_plugin\plugin_scene\Plugins\format3d\Intermediate\Build\Win64\x64\UnrealEditor\Development\format3d\UnrealEditor-format3d.lib"

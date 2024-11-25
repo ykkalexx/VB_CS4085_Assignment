@@ -1,0 +1,12 @@
+# Ignore everything in ue5_plugin/plugin_scene
+ue5_plugin/plugin_scene/*
+
+# Except the Plugins/format3d/Source folder
+!ue5_plugin/plugin_scene/Plugins/
+!ue5_plugin/plugin_scene/Plugins/format3d/
+!ue5_plugin/plugin_scene/Plugins/format3d/Source/
+!ue5_plugin/plugin_scene/Plugins/format3d/Source/**
+
+23141166_CS4018_FinalAssingmnet_Submission
+
+.vscode

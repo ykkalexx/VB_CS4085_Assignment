@@ -1,0 +1,14 @@
+{
+    "Version": "1.2",
+    "Data": {
+        "Source": "c:\\assignments\\vb_cs4085_assignment\\ue5_plugin\\plugin_scene\\plugins\\format3d\\source\\format3d\\private\\format3d.cpp",
+        "ProvidedModule": "",
+        "PCH": "c:\\assignments\\vb_cs4085_assignment\\ue5_plugin\\plugin_scene\\intermediate\\build\\win64\\x64\\plugin_sceneeditor\\development\\engine\\sharedpch.engine.shadowerrors.inclorderunreal5_1.h.pch",
+        "Includes": [
+            "c:\\assignments\\vb_cs4085_assignment\\ue5_plugin\\plugin_scene\\plugins\\format3d\\intermediate\\build\\win64\\x64\\unrealeditor\\development\\format3d\\definitions.format3d.h",
+            "c:\\assignments\\vb_cs4085_assignment\\ue5_plugin\\plugin_scene\\plugins\\format3d\\source\\format3d\\public\\format3d.h"
+        ],
+        "ImportedModules": [],
+        "ImportedHeaderUnits": []
+    }
+}
