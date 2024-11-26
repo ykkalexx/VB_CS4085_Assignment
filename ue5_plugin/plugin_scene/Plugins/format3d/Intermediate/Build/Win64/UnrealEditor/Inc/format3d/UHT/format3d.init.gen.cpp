@@ -17,13 +17,13 @@ void EmptyLinkFunctionForGeneratedCodeformat3d_init() {}
 				nullptr,
 				0,
 				PKG_CompiledIn | 0x00000000,
-				0xAA7DC2A7,
-				0xF915F0DA,
+				0x86E4EC50,
+				0xE81D73BD,
 				METADATA_PARAMS(nullptr, 0)
 			};
 			UECodeGen_Private::ConstructUPackage(Z_Registration_Info_UPackage__Script_format3d.OuterSingleton, PackageParams);
 		}
 		return Z_Registration_Info_UPackage__Script_format3d.OuterSingleton;
 	}
-	static FRegisterCompiledInInfo Z_CompiledInDeferPackage_UPackage__Script_format3d(Z_Construct_UPackage__Script_format3d, TEXT("/Script/format3d"), Z_Registration_Info_UPackage__Script_format3d, CONSTRUCT_RELOAD_VERSION_INFO(FPackageReloadVersionInfo, 0xAA7DC2A7, 0xF915F0DA));
+	static FRegisterCompiledInInfo Z_CompiledInDeferPackage_UPackage__Script_format3d(Z_Construct_UPackage__Script_format3d, TEXT("/Script/format3d"), Z_Registration_Info_UPackage__Script_format3d, CONSTRUCT_RELOAD_VERSION_INFO(FPackageReloadVersionInfo, 0x86E4EC50, 0xE81D73BD));
 PRAGMA_ENABLE_DEPRECATION_WARNINGS

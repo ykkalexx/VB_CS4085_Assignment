@@ -13,9 +13,9 @@
 #include "Editor.h"
 #include "EditorFramework/AssetImportData.h"
 
-
 #define LOCTEXT_NAMESPACE "Fformat3dModule"
 
+// Factory Implementation
 UCustom3DFactory::UCustom3DFactory()
 {
     bCreateNew = false;
@@ -34,11 +34,7 @@ bool UCustom3DFactory::FactoryCanImport(const FString& Filename)
 
 UObject* UCustom3DFactory::FactoryCreateFile(UClass* InClass, UObject* InParent, FName InName, EObjectFlags Flags, const FString& Filename, const TCHAR* Parms, FFeedbackContext* Warn, bool& bOutOperationCanceled)
 {
-    // Create a new static mesh
-    UStaticMesh* StaticMesh = nullptr;
-
-    // Create the mesh with the provided name in the provided package
-    StaticMesh = NewObject<UStaticMesh>(InParent, InName, Flags);
+    UStaticMesh* StaticMesh = NewObject<UStaticMesh>(InParent, InName, Flags);
     if (!StaticMesh)
     {
         if (Warn)
@@ -56,14 +52,11 @@ UObject* UCustom3DFactory::FactoryCreateFile(UClass* InClass, UObject* InParent,
         return nullptr;
     }
 
-    // Return the created mesh
     return StaticMesh;
 }
 
-
 void Fformat3dModule::StartupModule()
 {
-    // Create and register factory
     if (UCustom3DFactory* Factory = NewObject<UCustom3DFactory>())
     {
         Factory->AddToRoot();
@@ -72,48 +65,176 @@ void Fformat3dModule::StartupModule()
 
 void Fformat3dModule::ShutdownModule()
 {
-    // Nothing special needed here
 }
 
-
-bool Fformat3dModule::ImportCustom3DFile(const FString& FilePath, UObject* Parent, FString& ErrorMessage)
+// Helper Functions
+bool Fformat3dModule::ParseTransformMatrix(const TArray<FString>& Lines, int32& CurrentLine, FMatrix& OutMatrix)
 {
-    // Read file contents
-    TArray<FString> Lines;
-    if (!FFileHelper::LoadFileToStringArray(Lines, *FilePath))
+    if (CurrentLine + 4 >= Lines.Num()) return false;
+
+    for (int32 Row = 0; Row < 4; Row++)
     {
-        ErrorMessage = FString::Printf(TEXT("Failed to read file: %s"), *FilePath);
-        return false;
+        TArray<FString> Values;
+        Lines[CurrentLine + Row].ParseIntoArray(Values, TEXT(" "));
+        if (Values.Num() >= 4)
+        {
+            for (int32 Col = 0; Col < 4; Col++)
+            {
+                OutMatrix.M[Row][Col] = FCString::Atof(*Values[Col]);
+            }
+        }
     }
+    CurrentLine += 4;
+    return true;
+}
 
-    // Parse file
-    TArray<FCustom3DMaterial> Materials;
-    TArray<FCustom3DObject> Objects;
+bool Fformat3dModule::ParseMeshLOD(const TArray<FString>& Lines, int32& CurrentLine, FC3DMeshLOD& OutLOD)
+{
+    UE_LOG(LogTemp, Log, TEXT("Starting to parse mesh LOD at line %d"), CurrentLine);
 
-    int32 CurrentLine = 0;
     while (CurrentLine < Lines.Num())
     {
         const FString& Line = Lines[CurrentLine];
+        UE_LOG(LogTemp, Log, TEXT("Processing line: %s"), *Line);
 
-        if (Line.StartsWith(TEXT("material")))
+        if (Line.StartsWith(TEXT("LOD")))
         {
-            FCustom3DMaterial Material;
-            if (!ParseMaterial(Lines, CurrentLine, Material))
-            {
-                ErrorMessage = TEXT("Failed to parse material");
-                return false;
-            }
-            Materials.Add(Material);
+            TArray<FString> Parts;
+            Line.ParseIntoArray(Parts, TEXT(" "));
+            OutLOD.LODIndex = FCString::Atoi(*Parts.Last());
+            CurrentLine++;
+            continue;
         }
-        else if (Line.StartsWith(TEXT("node")))
+
+        if (Line.StartsWith(TEXT("VERTICES")))
         {
-            FCustom3DObject Object;
-            if (!ParseObject(Lines, CurrentLine, Object))
+            TArray<FString> Parts;
+            Line.ParseIntoArray(Parts, TEXT(" "));
+            int32 VertexCount = FCString::Atoi(*Parts.Last());
+            CurrentLine++;
+
+            UE_LOG(LogTemp, Log, TEXT("Parsing %d vertices"), VertexCount);
+
+            for (int32 i = 0; i < VertexCount; i++)
             {
-                ErrorMessage = TEXT("Failed to parse object");
-                return false;
+                if (CurrentLine >= Lines.Num()) break;
+
+                const FString& VertexLine = Lines[CurrentLine++];
+                TArray<FString> Values;
+                VertexLine.ParseIntoArray(Values, TEXT(" "));
+
+                if (Values.Num() >= 7 && Values[0] == TEXT("v"))
+                {
+                    FVector Position(
+                        FCString::Atof(*Values[1]),
+                        FCString::Atof(*Values[2]),
+                        FCString::Atof(*Values[3])
+                    );
+                    OutLOD.Vertices.Add(Position);
+
+                    if (Values[4] == TEXT("vn"))
+                    {
+                        FVector Normal(
+                            FCString::Atof(*Values[5]),
+                            FCString::Atof(*Values[6]),
+                            FCString::Atof(*Values[7])
+                        );
+                        OutLOD.Normals.Add(Normal);
+                    }
+                }
             }
-            Objects.Add(Object);
+
+            UE_LOG(LogTemp, Log, TEXT("Added %d vertices and normals"), OutLOD.Vertices.Num());
+        }
+        else if (Line.StartsWith(TEXT("FACES")))
+        {
+            TArray<FString> Parts;
+            Line.ParseIntoArray(Parts, TEXT(" "));
+            int32 FaceCount = FCString::Atoi(*Parts.Last());
+            CurrentLine++;
+
+            UE_LOG(LogTemp, Log, TEXT("Starting to parse %d faces"), FaceCount);
+
+            for (int32 i = 0; i < FaceCount && CurrentLine < Lines.Num(); i++)
+            {
+                const FString& FaceLine = Lines[CurrentLine++];
+                TArray<FString> Values;
+                FaceLine.ParseIntoArray(Values, TEXT(" "));
+
+                if (Values.Num() >= 4 && Values[0] == TEXT("f"))
+                {
+                    OutLOD.Indices.Add(FCString::Atoi(*Values[1]));
+                    OutLOD.Indices.Add(FCString::Atoi(*Values[2]));
+                    OutLOD.Indices.Add(FCString::Atoi(*Values[3]));
+
+                    int32 SmoothingGroup = 0;
+                    if (Values.Num() >= 6 && Values[4] == TEXT("sm"))
+                    {
+                        SmoothingGroup = FCString::Atoi(*Values[5]);
+                    }
+                    OutLOD.SmoothingGroups.Add(SmoothingGroup);
+
+                    UE_LOG(LogTemp, Log, TEXT("Added face indices: %d, %d, %d"),
+                        FCString::Atoi(*Values[1]),
+                        FCString::Atoi(*Values[2]),
+                        FCString::Atoi(*Values[3]));
+                }
+            }
+        }
+        else if (Line.StartsWith(TEXT("UVS")))
+        {
+            TArray<FString> Parts;
+            Line.ParseIntoArray(Parts, TEXT(" "));
+            int32 UVCount = FCString::Atoi(*Parts.Last());
+            CurrentLine++;
+
+            UE_LOG(LogTemp, Log, TEXT("Starting to parse %d UVs"), UVCount);
+
+            for (int32 i = 0; i < UVCount && CurrentLine < Lines.Num(); i++)
+            {
+                const FString& UVLine = Lines[CurrentLine++];
+                TArray<FString> Values;
+                UVLine.ParseIntoArray(Values, TEXT(" "));
+
+                if (Values.Num() >= 3 && Values[0] == TEXT("uv"))
+                {
+                    OutLOD.UVs.Add(FVector2D(
+                        FCString::Atof(*Values[1]),
+                        FCString::Atof(*Values[2])
+                    ));
+                }
+            }
+
+            UE_LOG(LogTemp, Log, TEXT("Added %d UVs"), OutLOD.UVs.Num());
+        }
+        else if (Line.StartsWith(TEXT("UVFACES")))
+        {
+            TArray<FString> Parts;
+            Line.ParseIntoArray(Parts, TEXT(" "));
+            int32 UVFaceCount = FCString::Atoi(*Parts.Last());
+            CurrentLine++;
+
+            UE_LOG(LogTemp, Log, TEXT("Parsing %d UV faces"), UVFaceCount);
+
+            for (int32 i = 0; i < UVFaceCount && CurrentLine < Lines.Num(); i++)
+            {
+                const FString& UVFaceLine = Lines[CurrentLine++];
+                TArray<FString> Values;
+                UVFaceLine.ParseIntoArray(Values, TEXT(" "));
+
+                if (Values.Num() >= 4 && Values[0] == TEXT("uvf"))
+                {
+                    OutLOD.UVIndices.Add(FCString::Atoi(*Values[1]));
+                    OutLOD.UVIndices.Add(FCString::Atoi(*Values[2]));
+                    OutLOD.UVIndices.Add(FCString::Atoi(*Values[3]));
+                }
+            }
+
+            UE_LOG(LogTemp, Log, TEXT("Added %d UV indices"), OutLOD.UVIndices.Num());
+        }
+        else if (Line.StartsWith(TEXT("COLLISION")))
+        {
+            break;
         }
         else
         {
@@ -121,240 +242,362 @@ bool Fformat3dModule::ImportCustom3DFile(const FString& FilePath, UObject* Paren
         }
     }
 
-    // Create meshes
-    for (const FCustom3DObject& Object : Objects)
+    bool bValid = (OutLOD.Vertices.Num() > 0) && (OutLOD.Indices.Num() > 0);
+    UE_LOG(LogTemp, Log, TEXT("Mesh LOD parsing complete. Valid: %d, Vertices: %d, Indices: %d"),
+        bValid, OutLOD.Vertices.Num(), OutLOD.Indices.Num());
+
+    if (!bValid)
     {
-        UStaticMesh* Mesh = nullptr;
-        if (!CreateStaticMesh(Object, Parent, Mesh))
+        UE_LOG(LogTemp, Warning, TEXT("Invalid mesh data - Vertices: %d, Indices: %d"),
+            OutLOD.Vertices.Num(), OutLOD.Indices.Num());
+    }
+
+    return bValid;
+}
+
+bool Fformat3dModule::ParseNode(const TArray<FString>& Lines, int32& CurrentLine, FC3DNode& OutNode)
+{
+    const FString& Line = Lines[CurrentLine];
+    OutNode.Name = Line.Replace(TEXT("NODE "), TEXT("")).Replace(TEXT("\""), TEXT(""));
+    CurrentLine++;
+
+    UE_LOG(LogTemp, Log, TEXT("Parsing node: %s"), *OutNode.Name);
+    bool bFoundValidMesh = false;
+    FMatrix CurrentTransform = FMatrix::Identity;
+
+    while (CurrentLine < Lines.Num())
+    {
+        const FString& CurrentLine_Str = Lines[CurrentLine];
+
+        if (CurrentLine_Str.StartsWith(TEXT("TRANSFORM")))
         {
-            ErrorMessage = FString::Printf(TEXT("Failed to create static mesh for object: %s"), *Object.Name);
-            return false;
+            UE_LOG(LogTemp, Log, TEXT("Found TRANSFORM for node %s"), *OutNode.Name);
+            CurrentLine++;
+            ParseTransformMatrix(Lines, CurrentLine, CurrentTransform);
+            OutNode.Transform = CurrentTransform;
+        }
+        else if (CurrentLine_Str.StartsWith(TEXT("MESH")))
+        {
+            UE_LOG(LogTemp, Log, TEXT("Found MESH for node %s"), *OutNode.Name);
+            FC3DMesh Mesh;
+            Mesh.Name = CurrentLine_Str.Replace(TEXT("MESH "), TEXT("")).Replace(TEXT("\""), TEXT(""));
+            Mesh.Transform = CurrentTransform; // Use current transform
+            CurrentLine++;
+
+            if (Lines[CurrentLine].StartsWith(TEXT("TRANSFORM")))
+            {
+                CurrentLine++;
+                FMatrix MeshTransform;
+                ParseTransformMatrix(Lines, CurrentLine, MeshTransform);
+                Mesh.Transform = Mesh.Transform * MeshTransform;
+            }
+
+            FC3DMeshLOD LOD;
+            if (ParseMeshLOD(Lines, CurrentLine, LOD))
+            {
+                UE_LOG(LogTemp, Log, TEXT("Successfully parsed LOD for mesh %s. Vertices: %d, Indices: %d"),
+                    *Mesh.Name, LOD.Vertices.Num(), LOD.Indices.Num());
+                Mesh.LODs.Add(LOD);
+                OutNode.Mesh = MoveTemp(Mesh);
+                bFoundValidMesh = true;
+                return true; // Return true immediately when we find a valid mesh
+            }
+            else
+            {
+                UE_LOG(LogTemp, Warning, TEXT("Failed to parse mesh LOD for node %s"), *OutNode.Name);
+            }
+        }
+        else if (CurrentLine_Str.StartsWith(TEXT("NODE")))
+        {
+            FC3DNode ChildNode;
+            if (ParseNode(Lines, CurrentLine, ChildNode))
+            {
+                OutNode.Children.Add(MoveTemp(ChildNode));
+                bFoundValidMesh = true;
+            }
+        }
+        else
+        {
+            CurrentLine++;
+            if (CurrentLine >= Lines.Num())
+            {
+                break;
+            }
         }
     }
 
-    return true;
+    return bFoundValidMesh;
 }
 
-bool Fformat3dModule::ParseMaterial(const TArray<FString>& Lines, int32& CurrentLine, FCustom3DMaterial& OutMaterial)
+bool Fformat3dModule::CreateStaticMesh(const FC3DMesh& Mesh, UStaticMesh* StaticMesh)
 {
-    // Store the return value
-    FString Name = Lines[CurrentLine].Replace(TEXT("material "), TEXT("")).Replace(TEXT("\""), TEXT(""));
-    OutMaterial.Name = Name;
-    CurrentLine++;
+    if (!StaticMesh || Mesh.LODs.Num() == 0) return false;
 
-    while (CurrentLine < Lines.Num() && !Lines[CurrentLine].Contains(TEXT("}")))
+    for (const FC3DMeshLOD& LOD : Mesh.LODs)
     {
-        const FString& Line = Lines[CurrentLine];
+        if (LOD.Vertices.Num() == 0 || LOD.Indices.Num() == 0) continue;
 
-        if (Line.Contains(TEXT("diffuse")))
+        FMeshDescription MeshDesc;
+        FStaticMeshAttributes StaticMeshAttrs(MeshDesc);
+        StaticMeshAttrs.Register();
+
+        TArray<FVertexID> VertexIDs;
+        TVertexAttributesRef<FVector3f> VertexPositions =
+            MeshDesc.VertexAttributes().GetAttributesRef<FVector3f>(MeshAttribute::Vertex::Position);
+
+        // Add vertices
+        for (const FVector& Vertex : LOD.Vertices)
         {
-            TArray<FString> Values;
-            // Store the return value
-            int32 NumElements = Line.ParseIntoArray(Values, TEXT(" "));
-            if (Values.Num() >= 4)
+            FVertexID VertexID = MeshDesc.CreateVertex();
+            FVector TransformedPos = Mesh.Transform.TransformPosition(Vertex);
+            VertexPositions[VertexID] = FVector3f(TransformedPos.X, TransformedPos.Y, TransformedPos.Z);
+            VertexIDs.Add(VertexID);
+        }
+
+        // Pre-calculate smoothed normals
+        TArray<FVector> SmoothedNormals;
+        SmoothedNormals.SetNum(LOD.Vertices.Num());
+        TArray<int32> NormalCounts;
+        NormalCounts.SetNum(LOD.Vertices.Num());
+
+        // First pass: Calculate face normals and contribute to vertex normals
+        for (int32 i = 0; i < LOD.Indices.Num(); i += 3)
+        {
+            if (i + 2 >= LOD.Indices.Num()) continue;
+
+            int32 Index0 = LOD.Indices[i];
+            int32 Index1 = LOD.Indices[i + 1];
+            int32 Index2 = LOD.Indices[i + 2];
+
+            if (Index0 < LOD.Vertices.Num() && Index1 < LOD.Vertices.Num() && Index2 < LOD.Vertices.Num())
             {
-                OutMaterial.Diffuse = FLinearColor(
-                    FCString::Atof(*Values[1]),
-                    FCString::Atof(*Values[2]),
-                    FCString::Atof(*Values[3]));
+                FVector V0 = LOD.Vertices[Index0];
+                FVector V1 = LOD.Vertices[Index1];
+                FVector V2 = LOD.Vertices[Index2];
+
+                FVector FaceNormal = FVector::CrossProduct(V1 - V0, V2 - V0).GetSafeNormal();
+
+                // Contribute to vertex normals
+                SmoothedNormals[Index0] += FaceNormal;
+                SmoothedNormals[Index1] += FaceNormal;
+                SmoothedNormals[Index2] += FaceNormal;
+
+                NormalCounts[Index0]++;
+                NormalCounts[Index1]++;
+                NormalCounts[Index2]++;
             }
         }
 
-        CurrentLine++;
+        // Average and normalize the smoothed normals
+        for (int32 i = 0; i < SmoothedNormals.Num(); i++)
+        {
+            if (NormalCounts[i] > 0)
+            {
+                SmoothedNormals[i] = (SmoothedNormals[i] / NormalCounts[i]).GetSafeNormal();
+            }
+        }
+
+        FPolygonGroupID PolygonGroupID = MeshDesc.CreatePolygonGroup();
+        int32 TriangleCount = 0;
+
+        // Create triangles
+        for (int32 i = 0; i < LOD.Indices.Num(); i += 3)
+        {
+            if (i + 2 >= LOD.Indices.Num()) continue;
+
+            TArray<FVertexInstanceID> VertexInstanceIDs;
+            bool bValidTriangle = true;
+
+            for (int32 j = 2; j >= 0; --j)
+            {
+                int32 Index = LOD.Indices[i + j];
+                int32 UVIndex = (i + j < LOD.UVIndices.Num()) ? LOD.UVIndices[i + j] : Index;
+
+                if (Index < 0 || Index >= LOD.Vertices.Num())
+                {
+                    bValidTriangle = false;
+                    break;
+                }
+
+                FVertexID VertexID = VertexIDs[Index];
+                FVertexInstanceID InstanceID = MeshDesc.CreateVertexInstance(VertexID);
+
+                // Use smoothed normal combined with original normal if available
+                FVector FinalNormal = SmoothedNormals[Index];
+                if (Index < LOD.Normals.Num())
+                {
+                    FinalNormal = (SmoothedNormals[Index] + LOD.Normals[Index]).GetSafeNormal();
+                }
+
+                // Transform normal
+                FVector TransformedNormal = Mesh.Transform.TransformVector(FinalNormal).GetSafeNormal();
+
+                // Set normal
+                MeshDesc.VertexInstanceAttributes().GetAttributesRef<FVector3f>(
+                    MeshAttribute::VertexInstance::Normal)[InstanceID] =
+                    FVector3f(TransformedNormal.X, TransformedNormal.Y, TransformedNormal.Z);
+
+                // Calculate tangent basis
+                FVector TangentX, TangentY;
+                if (UVIndex >= 0 && UVIndex < LOD.UVs.Num())
+                {
+                    TangentX = FVector(1.0f, 0.0f, 0.0f);
+                    TangentY = FVector::CrossProduct(TransformedNormal, TangentX);
+                    TangentX = FVector::CrossProduct(TangentY, TransformedNormal);
+                    TangentX.Normalize();
+                }
+                else
+                {
+                    TransformedNormal.FindBestAxisVectors(TangentX, TangentY);
+                }
+
+                // Set tangent
+                MeshDesc.VertexInstanceAttributes().GetAttributesRef<FVector3f>(
+                    MeshAttribute::VertexInstance::Tangent)[InstanceID] =
+                    FVector3f(TangentX.X, TangentX.Y, TangentX.Z);
+
+                // Set UV
+                if (UVIndex >= 0 && UVIndex < LOD.UVs.Num())
+                {
+                    MeshDesc.VertexInstanceAttributes().GetAttributesRef<FVector2f>(
+                        MeshAttribute::VertexInstance::TextureCoordinate)[InstanceID] =
+                        FVector2f(LOD.UVs[UVIndex].X, LOD.UVs[UVIndex].Y);
+                }
+
+                VertexInstanceIDs.Add(InstanceID);
+            }
+
+            if (bValidTriangle && VertexInstanceIDs.Num() == 3)
+            {
+                MeshDesc.CreatePolygon(PolygonGroupID, VertexInstanceIDs);
+                TriangleCount++;
+            }
+        }
+
+        // Setup source model
+        FStaticMeshSourceModel& SrcModel = StaticMesh->AddSourceModel();
+
+        // Configure build settings
+        FMeshBuildSettings& BuildSettings = SrcModel.BuildSettings;
+        BuildSettings.bRecomputeNormals = true;  // Use computed normals
+        BuildSettings.bRecomputeTangents = true;
+        BuildSettings.bUseMikkTSpace = true;
+        BuildSettings.bRemoveDegenerates = true;
+        BuildSettings.bUseFullPrecisionUVs = true;
+        BuildSettings.bGenerateLightmapUVs = true;
+        BuildSettings.MinLightmapResolution = 128;  // Increased resolution
+        BuildSettings.SrcLightmapIndex = 0;
+        BuildSettings.DstLightmapIndex = 1;
+
+        // Initialize mesh description
+        StaticMesh->CreateMeshDescription(LOD.LODIndex, MoveTemp(MeshDesc));
+        StaticMesh->CommitMeshDescription(LOD.LODIndex);
     }
-    CurrentLine++;
+
+    // Configure static mesh properties
+    StaticMesh->SetLightingGuid();
+    StaticMesh->SetLightMapResolution(128);
+    StaticMesh->SetLightMapCoordinateIndex(1);
+
+    // Add default material
+    StaticMesh->GetStaticMaterials().Add(FStaticMaterial(UMaterial::GetDefaultMaterial(MD_Surface)));
+
+    // Setup collision
+    StaticMesh->CreateBodySetup();
+    UBodySetup* BodySetup = StaticMesh->GetBodySetup();
+    BodySetup->CollisionTraceFlag = CTF_UseSimpleAsComplex;
+
+    // Build the mesh
+    StaticMesh->Build();
+    StaticMesh->PostEditChange();
+
     return true;
 }
 
-struct FCustomFaceIndex
+bool Fformat3dModule::ImportCustom3DFile(const FString& FilePath, UStaticMesh* StaticMesh, FString& ErrorMessage)
 {
-    int32 VertexIndex;
-    int32 UVIndex;
-    int32 NormalIndex;
-};
+    TArray<FString> Lines;
+    if (!FFileHelper::LoadFileToStringArray(Lines, *FilePath))
+    {
+        ErrorMessage = FString::Printf(TEXT("Failed to read file: %s"), *FilePath);
+        return false;
+    }
 
-bool Fformat3dModule::ParseObject(const TArray<FString>& Lines, int32& CurrentLine, FCustom3DObject& OutObject)
-{
-    // Parse object name and increment line
-    FString Name = Lines[CurrentLine].Replace(TEXT("node "), TEXT("")).Replace(TEXT("\""), TEXT(""));
-    OutObject.Name = Name;
-    CurrentLine++;
+    UE_LOG(LogTemp, Log, TEXT("Starting to parse C3D file with %d lines"), Lines.Num());
 
-    // Skip through transform and material sections until we hit vertices
-    while (CurrentLine < Lines.Num() && !Lines[CurrentLine].StartsWith(TEXT("v ")))
+    if (Lines.Num() == 0 || !Lines[0].StartsWith(TEXT("C3D_FILE_FORMAT")))
+    {
+        ErrorMessage = TEXT("Invalid file format: Missing C3D_FILE_FORMAT header");
+        return false;
+    }
+
+    int32 CurrentLine = 1;
+    if (CurrentLine < Lines.Num() && Lines[CurrentLine].StartsWith(TEXT("VERSION")))
     {
         CurrentLine++;
     }
 
-    TArray<FVector> Positions;
-    TArray<FVector> Normals;
-    TArray<FVector2D> UVs;
-
-    // Now parse all vertices, normals, UVs and faces
     while (CurrentLine < Lines.Num())
     {
         const FString& Line = Lines[CurrentLine];
 
-        if (Line.StartsWith(TEXT("v ")))
+        if (Line.StartsWith(TEXT("NODE")))
         {
-            TArray<FString> Values;
-            int32 NumParsed = Line.ParseIntoArray(Values, TEXT(" "));
-            if (Values.Num() >= 4)
-            {
-                FVector Position(
-                    FCString::Atof(*Values[1]),
-                    FCString::Atof(*Values[2]),
-                    FCString::Atof(*Values[3]));
-                Positions.Add(Position);
-            }
-        }
-        else if (Line.StartsWith(TEXT("vn ")))
-        {
-            TArray<FString> Values;
-            int32 NumParsed = Line.ParseIntoArray(Values, TEXT(" "));
-            if (Values.Num() >= 4)
-            {
-                Normals.Add(FVector(
-                    FCString::Atof(*Values[1]),
-                    FCString::Atof(*Values[2]),
-                    FCString::Atof(*Values[3])));
-            }
-        }
-        else if (Line.StartsWith(TEXT("vt ")))
-        {
-            TArray<FString> Values;
-            int32 NumParsed = Line.ParseIntoArray(Values, TEXT(" "));
-            if (Values.Num() >= 3)
-            {
-                UVs.Add(FVector2D(
-                    FCString::Atof(*Values[1]),
-                    FCString::Atof(*Values[2])));
-            }
-        }
-        else if (Line.StartsWith(TEXT("f ")))
-        {
-            TArray<FString> FaceElements;
-            int32 NumParsed = Line.ParseIntoArray(FaceElements, TEXT(" "));
+            UE_LOG(LogTemp, Log, TEXT("Found NODE at line %d: %s"), CurrentLine, *Line);
 
-            // Skip the first element ("f") and the last element ("mat_id X")
-            for (int32 i = 1; i < FaceElements.Num() - 2; i++)
+            FC3DNode Node;
+            if (ParseNode(Lines, CurrentLine, Node))
             {
-                FString Element = FaceElements[i];
-                FString NoDecimal = Element.Replace(TEXT(".0"), TEXT(""));
-
-                TArray<FString> Indices;
-                int32 NumIndices = NoDecimal.ParseIntoArray(Indices, TEXT("/"));
-
-                if (Indices.Num() > 0)
+                if (Node.Mesh.IsSet())
                 {
-                    int32 VertexIndex = FCString::Atoi(*Indices[0]) - 1;
-                    if (VertexIndex >= 0)
+                    UE_LOG(LogTemp, Log, TEXT("Node %s has mesh, attempting to create"), *Node.Name);
+                    const FC3DMesh& Mesh = Node.Mesh.GetValue();
+
+                    if (Mesh.LODs.Num() > 0 && Mesh.LODs[0].Vertices.Num() > 0 && Mesh.LODs[0].Indices.Num() > 0)
                     {
-                        OutObject.Indices.Add(VertexIndex);
+                        if (CreateStaticMesh(Mesh, StaticMesh))
+                        {
+                            UE_LOG(LogTemp, Log, TEXT("Successfully created mesh for node %s"), *Node.Name);
+                            return true;
+                        }
+                        else
+                        {
+                            UE_LOG(LogTemp, Error, TEXT("Failed to create mesh for node %s"), *Node.Name);
+                        }
+                    }
+                    else
+                    {
+                        UE_LOG(LogTemp, Warning, TEXT("Invalid mesh data in node %s"), *Node.Name);
+                    }
+                }
+
+                // Check children nodes for meshes
+                for (const FC3DNode& Child : Node.Children)
+                {
+                    if (Child.Mesh.IsSet())
+                    {
+                        const FC3DMesh& Mesh = Child.Mesh.GetValue();
+                        if (Mesh.LODs.Num() > 0 && Mesh.LODs[0].Vertices.Num() > 0 && Mesh.LODs[0].Indices.Num() > 0)
+                        {
+                            if (CreateStaticMesh(Mesh, StaticMesh))
+                            {
+                                UE_LOG(LogTemp, Log, TEXT("Successfully created mesh for child node %s"), *Child.Name);
+                                return true;
+                            }
+                        }
                     }
                 }
             }
-        }
-        else if (Line.StartsWith(TEXT("# Collision"))) // Stop when we hit collision section
-        {
-            break;
         }
 
         CurrentLine++;
     }
 
-    // Create vertices
-    for (int32 i = 0; i < Positions.Num(); i++)
-    {
-        FCustom3DVertex Vertex;
-        Vertex.Position = Positions[i];
-        Vertex.Normal = (i < Normals.Num()) ? Normals[i] : FVector::UpVector;
-        Vertex.UV = (i < UVs.Num()) ? UVs[i] : FVector2D::ZeroVector;
-        OutObject.Vertices.Add(Vertex);
-    }
-
-    UE_LOG(LogTemp, Warning, TEXT("Parsed %s: %d vertices, %d indices"),
-        *OutObject.Name, OutObject.Vertices.Num(), OutObject.Indices.Num());
-
-    return true;
-}
-
-bool Fformat3dModule::CreateStaticMesh(const FCustom3DObject& Object, UObject* Parent, UStaticMesh*& OutMesh)
-{
-    FString MeshName = FPaths::GetBaseFilename(Parent->GetName());
-    OutMesh = NewObject<UStaticMesh>(Parent, *MeshName, RF_Public | RF_Standalone);
-
-    // Initialize render data first
-    OutMesh->InitResources();
-
-    // Create mesh description
-    FMeshDescription* MeshDesc = new FMeshDescription();
-    FStaticMeshAttributes(MeshDesc).Register();
-
-    // Add vertices and faces
-    TArray<FVertexID> VertexIDs;
-    TVertexAttributesRef<FVector3f> VertexPositions =
-        MeshDesc->VertexAttributes().GetAttributesRef<FVector3f>(MeshAttribute::Vertex::Position);
-
-    // Add vertices
-    for (const FCustom3DVertex& Vertex : Object.Vertices)
-    {
-        FVertexID VertexID = MeshDesc->CreateVertex();
-        VertexPositions.Set(VertexID, FVector3f(Vertex.Position));
-        VertexIDs.Add(VertexID);
-    }
-
-    FPolygonGroupID PolygonGroupID = MeshDesc->CreatePolygonGroup();
-
-    // Create triangles
-    for (int32 i = 0; i < Object.Indices.Num(); i += 3)
-    {
-        if (i + 2 >= Object.Indices.Num()) continue;
-
-        TArray<FVertexInstanceID> VertexInstanceIDs;
-
-        for (int32 j = 0; j < 3; ++j)
-        {
-            int32 Index = Object.Indices[i + j];
-            if (Index < 0 || Index >= Object.Vertices.Num()) continue;
-
-            FVertexID VertexID = VertexIDs[Index];
-            FVertexInstanceID InstanceID = MeshDesc->CreateVertexInstance(VertexID);
-
-            MeshDesc->VertexInstanceAttributes().GetAttributesRef<FVector3f>(MeshAttribute::VertexInstance::Normal)
-                .Set(InstanceID, FVector3f(Object.Vertices[Index].Normal));
-            MeshDesc->VertexInstanceAttributes().GetAttributesRef<FVector2f>(MeshAttribute::VertexInstance::TextureCoordinate)
-                .Set(InstanceID, 0, FVector2f(Object.Vertices[Index].UV));
-
-            VertexInstanceIDs.Add(InstanceID);
-        }
-
-        if (VertexInstanceIDs.Num() == 3)
-        {
-            MeshDesc->CreatePolygon(PolygonGroupID, VertexInstanceIDs);
-        }
-    }
-
-    // Setup source model
-    FStaticMeshSourceModel& SrcModel = OutMesh->AddSourceModel();
-    SrcModel.BuildSettings.bRecomputeNormals = false;
-    SrcModel.BuildSettings.bRecomputeTangents = true;
-    SrcModel.BuildSettings.bRemoveDegenerates = false;
-    SrcModel.BuildSettings.bUseMikkTSpace = false;
-    SrcModel.BuildSettings.bUseFullPrecisionUVs = true;
-
-    // Add default material
-    OutMesh->GetStaticMaterials().Add(FStaticMaterial(UMaterial::GetDefaultMaterial(MD_Surface)));
-
-    // Build the mesh
-    OutMesh->BuildFromMeshDescription(*MeshDesc);
-    delete MeshDesc;
-
-    OutMesh->PostEditChange();
-
-    return true;
+    UE_LOG(LogTemp, Error, TEXT("No valid meshes found in the file"));
+    ErrorMessage = TEXT("No valid meshes found in file");
+    return false;
 }
 
 #undef LOCTEXT_NAMESPACE
-	
+
 IMPLEMENT_MODULE(Fformat3dModule, format3d)

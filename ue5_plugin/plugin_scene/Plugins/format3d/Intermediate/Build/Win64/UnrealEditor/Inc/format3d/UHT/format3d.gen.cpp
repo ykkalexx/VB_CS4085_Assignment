@@ -11,9 +11,225 @@ void EmptyLinkFunctionForGeneratedCodeformat3d() {}
 // Cross Module References
 	FORMAT3D_API UClass* Z_Construct_UClass_UCustom3DFactory();
 	FORMAT3D_API UClass* Z_Construct_UClass_UCustom3DFactory_NoRegister();
+	FORMAT3D_API UScriptStruct* Z_Construct_UScriptStruct_FC3DMaterial();
+	FORMAT3D_API UScriptStruct* Z_Construct_UScriptStruct_FC3DMesh();
+	FORMAT3D_API UScriptStruct* Z_Construct_UScriptStruct_FC3DMeshLOD();
+	FORMAT3D_API UScriptStruct* Z_Construct_UScriptStruct_FC3DNode();
 	UNREALED_API UClass* Z_Construct_UClass_UFactory();
 	UPackage* Z_Construct_UPackage__Script_format3d();
 // End Cross Module References
+	static FStructRegistrationInfo Z_Registration_Info_UScriptStruct_C3DMaterial;
+class UScriptStruct* FC3DMaterial::StaticStruct()
+{
+	if (!Z_Registration_Info_UScriptStruct_C3DMaterial.OuterSingleton)
+	{
+		Z_Registration_Info_UScriptStruct_C3DMaterial.OuterSingleton = GetStaticStruct(Z_Construct_UScriptStruct_FC3DMaterial, (UObject*)Z_Construct_UPackage__Script_format3d(), TEXT("C3DMaterial"));
+	}
+	return Z_Registration_Info_UScriptStruct_C3DMaterial.OuterSingleton;
+}
+template<> FORMAT3D_API UScriptStruct* StaticStruct<FC3DMaterial>()
+{
+	return FC3DMaterial::StaticStruct();
+}
+	struct Z_Construct_UScriptStruct_FC3DMaterial_Statics
+	{
+#if WITH_METADATA
+		static const UECodeGen_Private::FMetaDataPairParam Struct_MetaDataParams[];
+#endif
+		static void* NewStructOps();
+		static const UECodeGen_Private::FStructParams ReturnStructParams;
+	};
+#if WITH_METADATA
+	const UECodeGen_Private::FMetaDataPairParam Z_Construct_UScriptStruct_FC3DMaterial_Statics::Struct_MetaDataParams[] = {
+		{ "Comment", "// Material structure\n" },
+		{ "ModuleRelativePath", "Public/format3d.h" },
+		{ "ToolTip", "Material structure" },
+	};
+#endif
+	void* Z_Construct_UScriptStruct_FC3DMaterial_Statics::NewStructOps()
+	{
+		return (UScriptStruct::ICppStructOps*)new UScriptStruct::TCppStructOps<FC3DMaterial>();
+	}
+	const UECodeGen_Private::FStructParams Z_Construct_UScriptStruct_FC3DMaterial_Statics::ReturnStructParams = {
+		(UObject* (*)())Z_Construct_UPackage__Script_format3d,
+		nullptr,
+		&NewStructOps,
+		"C3DMaterial",
+		sizeof(FC3DMaterial),
+		alignof(FC3DMaterial),
+		nullptr,
+		0,
+		RF_Public|RF_Transient|RF_MarkAsNative,
+		EStructFlags(0x00000201),
+		METADATA_PARAMS(Z_Construct_UScriptStruct_FC3DMaterial_Statics::Struct_MetaDataParams, UE_ARRAY_COUNT(Z_Construct_UScriptStruct_FC3DMaterial_Statics::Struct_MetaDataParams))
+	};
+	UScriptStruct* Z_Construct_UScriptStruct_FC3DMaterial()
+	{
+		if (!Z_Registration_Info_UScriptStruct_C3DMaterial.InnerSingleton)
+		{
+			UECodeGen_Private::ConstructUScriptStruct(Z_Registration_Info_UScriptStruct_C3DMaterial.InnerSingleton, Z_Construct_UScriptStruct_FC3DMaterial_Statics::ReturnStructParams);
+		}
+		return Z_Registration_Info_UScriptStruct_C3DMaterial.InnerSingleton;
+	}
+	static FStructRegistrationInfo Z_Registration_Info_UScriptStruct_C3DMeshLOD;
+class UScriptStruct* FC3DMeshLOD::StaticStruct()
+{
+	if (!Z_Registration_Info_UScriptStruct_C3DMeshLOD.OuterSingleton)
+	{
+		Z_Registration_Info_UScriptStruct_C3DMeshLOD.OuterSingleton = GetStaticStruct(Z_Construct_UScriptStruct_FC3DMeshLOD, (UObject*)Z_Construct_UPackage__Script_format3d(), TEXT("C3DMeshLOD"));
+	}
+	return Z_Registration_Info_UScriptStruct_C3DMeshLOD.OuterSingleton;
+}
+template<> FORMAT3D_API UScriptStruct* StaticStruct<FC3DMeshLOD>()
+{
+	return FC3DMeshLOD::StaticStruct();
+}
+	struct Z_Construct_UScriptStruct_FC3DMeshLOD_Statics
+	{
+#if WITH_METADATA
+		static const UECodeGen_Private::FMetaDataPairParam Struct_MetaDataParams[];
+#endif
+		static void* NewStructOps();
+		static const UECodeGen_Private::FStructParams ReturnStructParams;
+	};
+#if WITH_METADATA
+	const UECodeGen_Private::FMetaDataPairParam Z_Construct_UScriptStruct_FC3DMeshLOD_Statics::Struct_MetaDataParams[] = {
+		{ "Comment", "// LOD Data structure\n" },
+		{ "ModuleRelativePath", "Public/format3d.h" },
+		{ "ToolTip", "LOD Data structure" },
+	};
+#endif
+	void* Z_Construct_UScriptStruct_FC3DMeshLOD_Statics::NewStructOps()
+	{
+		return (UScriptStruct::ICppStructOps*)new UScriptStruct::TCppStructOps<FC3DMeshLOD>();
+	}
+	const UECodeGen_Private::FStructParams Z_Construct_UScriptStruct_FC3DMeshLOD_Statics::ReturnStructParams = {
+		(UObject* (*)())Z_Construct_UPackage__Script_format3d,
+		nullptr,
+		&NewStructOps,
+		"C3DMeshLOD",
+		sizeof(FC3DMeshLOD),
+		alignof(FC3DMeshLOD),
+		nullptr,
+		0,
+		RF_Public|RF_Transient|RF_MarkAsNative,
+		EStructFlags(0x00000201),
+		METADATA_PARAMS(Z_Construct_UScriptStruct_FC3DMeshLOD_Statics::Struct_MetaDataParams, UE_ARRAY_COUNT(Z_Construct_UScriptStruct_FC3DMeshLOD_Statics::Struct_MetaDataParams))
+	};
+	UScriptStruct* Z_Construct_UScriptStruct_FC3DMeshLOD()
+	{
+		if (!Z_Registration_Info_UScriptStruct_C3DMeshLOD.InnerSingleton)
+		{
+			UECodeGen_Private::ConstructUScriptStruct(Z_Registration_Info_UScriptStruct_C3DMeshLOD.InnerSingleton, Z_Construct_UScriptStruct_FC3DMeshLOD_Statics::ReturnStructParams);
+		}
+		return Z_Registration_Info_UScriptStruct_C3DMeshLOD.InnerSingleton;
+	}
+	static FStructRegistrationInfo Z_Registration_Info_UScriptStruct_C3DMesh;
+class UScriptStruct* FC3DMesh::StaticStruct()
+{
+	if (!Z_Registration_Info_UScriptStruct_C3DMesh.OuterSingleton)
+	{
+		Z_Registration_Info_UScriptStruct_C3DMesh.OuterSingleton = GetStaticStruct(Z_Construct_UScriptStruct_FC3DMesh, (UObject*)Z_Construct_UPackage__Script_format3d(), TEXT("C3DMesh"));
+	}
+	return Z_Registration_Info_UScriptStruct_C3DMesh.OuterSingleton;
+}
+template<> FORMAT3D_API UScriptStruct* StaticStruct<FC3DMesh>()
+{
+	return FC3DMesh::StaticStruct();
+}
+	struct Z_Construct_UScriptStruct_FC3DMesh_Statics
+	{
+#if WITH_METADATA
+		static const UECodeGen_Private::FMetaDataPairParam Struct_MetaDataParams[];
+#endif
+		static void* NewStructOps();
+		static const UECodeGen_Private::FStructParams ReturnStructParams;
+	};
+#if WITH_METADATA
+	const UECodeGen_Private::FMetaDataPairParam Z_Construct_UScriptStruct_FC3DMesh_Statics::Struct_MetaDataParams[] = {
+		{ "Comment", "// Mesh structure\n" },
+		{ "ModuleRelativePath", "Public/format3d.h" },
+		{ "ToolTip", "Mesh structure" },
+	};
+#endif
+	void* Z_Construct_UScriptStruct_FC3DMesh_Statics::NewStructOps()
+	{
+		return (UScriptStruct::ICppStructOps*)new UScriptStruct::TCppStructOps<FC3DMesh>();
+	}
+	const UECodeGen_Private::FStructParams Z_Construct_UScriptStruct_FC3DMesh_Statics::ReturnStructParams = {
+		(UObject* (*)())Z_Construct_UPackage__Script_format3d,
+		nullptr,
+		&NewStructOps,
+		"C3DMesh",
+		sizeof(FC3DMesh),
+		alignof(FC3DMesh),
+		nullptr,
+		0,
+		RF_Public|RF_Transient|RF_MarkAsNative,
+		EStructFlags(0x00000201),
+		METADATA_PARAMS(Z_Construct_UScriptStruct_FC3DMesh_Statics::Struct_MetaDataParams, UE_ARRAY_COUNT(Z_Construct_UScriptStruct_FC3DMesh_Statics::Struct_MetaDataParams))
+	};
+	UScriptStruct* Z_Construct_UScriptStruct_FC3DMesh()
+	{
+		if (!Z_Registration_Info_UScriptStruct_C3DMesh.InnerSingleton)
+		{
+			UECodeGen_Private::ConstructUScriptStruct(Z_Registration_Info_UScriptStruct_C3DMesh.InnerSingleton, Z_Construct_UScriptStruct_FC3DMesh_Statics::ReturnStructParams);
+		}
+		return Z_Registration_Info_UScriptStruct_C3DMesh.InnerSingleton;
+	}
+	static FStructRegistrationInfo Z_Registration_Info_UScriptStruct_C3DNode;
+class UScriptStruct* FC3DNode::StaticStruct()
+{
+	if (!Z_Registration_Info_UScriptStruct_C3DNode.OuterSingleton)
+	{
+		Z_Registration_Info_UScriptStruct_C3DNode.OuterSingleton = GetStaticStruct(Z_Construct_UScriptStruct_FC3DNode, (UObject*)Z_Construct_UPackage__Script_format3d(), TEXT("C3DNode"));
+	}
+	return Z_Registration_Info_UScriptStruct_C3DNode.OuterSingleton;
+}
+template<> FORMAT3D_API UScriptStruct* StaticStruct<FC3DNode>()
+{
+	return FC3DNode::StaticStruct();
+}
+	struct Z_Construct_UScriptStruct_FC3DNode_Statics
+	{
+#if WITH_METADATA
+		static const UECodeGen_Private::FMetaDataPairParam Struct_MetaDataParams[];
+#endif
+		static void* NewStructOps();
+		static const UECodeGen_Private::FStructParams ReturnStructParams;
+	};
+#if WITH_METADATA
+	const UECodeGen_Private::FMetaDataPairParam Z_Construct_UScriptStruct_FC3DNode_Statics::Struct_MetaDataParams[] = {
+		{ "Comment", "// Node structure\n" },
+		{ "ModuleRelativePath", "Public/format3d.h" },
+		{ "ToolTip", "Node structure" },
+	};
+#endif
+	void* Z_Construct_UScriptStruct_FC3DNode_Statics::NewStructOps()
+	{
+		return (UScriptStruct::ICppStructOps*)new UScriptStruct::TCppStructOps<FC3DNode>();
+	}
+	const UECodeGen_Private::FStructParams Z_Construct_UScriptStruct_FC3DNode_Statics::ReturnStructParams = {
+		(UObject* (*)())Z_Construct_UPackage__Script_format3d,
+		nullptr,
+		&NewStructOps,
+		"C3DNode",
+		sizeof(FC3DNode),
+		alignof(FC3DNode),
+		nullptr,
+		0,
+		RF_Public|RF_Transient|RF_MarkAsNative,
+		EStructFlags(0x00000201),
+		METADATA_PARAMS(Z_Construct_UScriptStruct_FC3DNode_Statics::Struct_MetaDataParams, UE_ARRAY_COUNT(Z_Construct_UScriptStruct_FC3DNode_Statics::Struct_MetaDataParams))
+	};
+	UScriptStruct* Z_Construct_UScriptStruct_FC3DNode()
+	{
+		if (!Z_Registration_Info_UScriptStruct_C3DNode.InnerSingleton)
+		{
+			UECodeGen_Private::ConstructUScriptStruct(Z_Registration_Info_UScriptStruct_C3DNode.InnerSingleton, Z_Construct_UScriptStruct_FC3DNode_Statics::ReturnStructParams);
+		}
+		return Z_Registration_Info_UScriptStruct_C3DNode.InnerSingleton;
+	}
 	void UCustom3DFactory::StaticRegisterNativesUCustom3DFactory()
 	{
 	}
@@ -37,8 +253,10 @@ void EmptyLinkFunctionForGeneratedCodeformat3d() {}
 	};
 #if WITH_METADATA
 	const UECodeGen_Private::FMetaDataPairParam Z_Construct_UClass_UCustom3DFactory_Statics::Class_MetaDataParams[] = {
+		{ "Comment", "// Factory class\n" },
 		{ "IncludePath", "format3d.h" },
 		{ "ModuleRelativePath", "Public/format3d.h" },
+		{ "ToolTip", "Factory class" },
 	};
 #endif
 	const FCppClassTypeInfoStatic Z_Construct_UClass_UCustom3DFactory_Statics::StaticCppClassTypeInfo = {
@@ -75,13 +293,20 @@ void EmptyLinkFunctionForGeneratedCodeformat3d() {}
 	UCustom3DFactory::~UCustom3DFactory() {}
 	struct Z_CompiledInDeferFile_FID_Assignments_VB_CS4085_Assignment_ue5_plugin_plugin_scene_Plugins_format3d_Source_format3d_Public_format3d_h_Statics
 	{
+		static const FStructRegisterCompiledInInfo ScriptStructInfo[];
 		static const FClassRegisterCompiledInInfo ClassInfo[];
 	};
-	const FClassRegisterCompiledInInfo Z_CompiledInDeferFile_FID_Assignments_VB_CS4085_Assignment_ue5_plugin_plugin_scene_Plugins_format3d_Source_format3d_Public_format3d_h_Statics::ClassInfo[] = {
-		{ Z_Construct_UClass_UCustom3DFactory, UCustom3DFactory::StaticClass, TEXT("UCustom3DFactory"), &Z_Registration_Info_UClass_UCustom3DFactory, CONSTRUCT_RELOAD_VERSION_INFO(FClassReloadVersionInfo, sizeof(UCustom3DFactory), 628369213U) },
+	const FStructRegisterCompiledInInfo Z_CompiledInDeferFile_FID_Assignments_VB_CS4085_Assignment_ue5_plugin_plugin_scene_Plugins_format3d_Source_format3d_Public_format3d_h_Statics::ScriptStructInfo[] = {
+		{ FC3DMaterial::StaticStruct, Z_Construct_UScriptStruct_FC3DMaterial_Statics::NewStructOps, TEXT("C3DMaterial"), &Z_Registration_Info_UScriptStruct_C3DMaterial, CONSTRUCT_RELOAD_VERSION_INFO(FStructReloadVersionInfo, sizeof(FC3DMaterial), 3464006033U) },
+		{ FC3DMeshLOD::StaticStruct, Z_Construct_UScriptStruct_FC3DMeshLOD_Statics::NewStructOps, TEXT("C3DMeshLOD"), &Z_Registration_Info_UScriptStruct_C3DMeshLOD, CONSTRUCT_RELOAD_VERSION_INFO(FStructReloadVersionInfo, sizeof(FC3DMeshLOD), 1682050113U) },
+		{ FC3DMesh::StaticStruct, Z_Construct_UScriptStruct_FC3DMesh_Statics::NewStructOps, TEXT("C3DMesh"), &Z_Registration_Info_UScriptStruct_C3DMesh, CONSTRUCT_RELOAD_VERSION_INFO(FStructReloadVersionInfo, sizeof(FC3DMesh), 283338206U) },
+		{ FC3DNode::StaticStruct, Z_Construct_UScriptStruct_FC3DNode_Statics::NewStructOps, TEXT("C3DNode"), &Z_Registration_Info_UScriptStruct_C3DNode, CONSTRUCT_RELOAD_VERSION_INFO(FStructReloadVersionInfo, sizeof(FC3DNode), 1659452646U) },
 	};
-	static FRegisterCompiledInInfo Z_CompiledInDeferFile_FID_Assignments_VB_CS4085_Assignment_ue5_plugin_plugin_scene_Plugins_format3d_Source_format3d_Public_format3d_h_1697003261(TEXT("/Script/format3d"),
+	const FClassRegisterCompiledInInfo Z_CompiledInDeferFile_FID_Assignments_VB_CS4085_Assignment_ue5_plugin_plugin_scene_Plugins_format3d_Source_format3d_Public_format3d_h_Statics::ClassInfo[] = {
+		{ Z_Construct_UClass_UCustom3DFactory, UCustom3DFactory::StaticClass, TEXT("UCustom3DFactory"), &Z_Registration_Info_UClass_UCustom3DFactory, CONSTRUCT_RELOAD_VERSION_INFO(FClassReloadVersionInfo, sizeof(UCustom3DFactory), 516352219U) },
+	};
+	static FRegisterCompiledInInfo Z_CompiledInDeferFile_FID_Assignments_VB_CS4085_Assignment_ue5_plugin_plugin_scene_Plugins_format3d_Source_format3d_Public_format3d_h_256634100(TEXT("/Script/format3d"),
 		Z_CompiledInDeferFile_FID_Assignments_VB_CS4085_Assignment_ue5_plugin_plugin_scene_Plugins_format3d_Source_format3d_Public_format3d_h_Statics::ClassInfo, UE_ARRAY_COUNT(Z_CompiledInDeferFile_FID_Assignments_VB_CS4085_Assignment_ue5_plugin_plugin_scene_Plugins_format3d_Source_format3d_Public_format3d_h_Statics::ClassInfo),
-		nullptr, 0,
+		Z_CompiledInDeferFile_FID_Assignments_VB_CS4085_Assignment_ue5_plugin_plugin_scene_Plugins_format3d_Source_format3d_Public_format3d_h_Statics::ScriptStructInfo, UE_ARRAY_COUNT(Z_CompiledInDeferFile_FID_Assignments_VB_CS4085_Assignment_ue5_plugin_plugin_scene_Plugins_format3d_Source_format3d_Public_format3d_h_Statics::ScriptStructInfo),
 		nullptr, 0);
 PRAGMA_ENABLE_DEPRECATION_WARNINGS
