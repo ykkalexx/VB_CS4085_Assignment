@@ -5,7 +5,11 @@
 #include <maxapi.h> 
 #include <impexp.h>
 #include <maxtypes.h>  
-#include <stdmat.h>  
+#include <stdmat.h>
+#include <mesh.h>
+#include <mnmesh.h> // For MeshNormalSpec
+#include <meshnormalspec.h> // For MeshNormalSpec
+#include <triobj.h>
 
 #define C3D_EXPORTER_CLASS_ID Class_ID(0x12345678, 0x87654321)
 
@@ -13,10 +17,10 @@ class C3DExporter : public SceneExport {
 private:
     Interface* ip;
     FILE* exportFile;
-    void ExportMesh(INode* node);
+    void ExportMesh(INode* node, int lodLevel = 0); // Add lodLevel parameter here
     void ExportNode(INode* node);
     void ExportMaterial(Mtl* mtl);
-    void WriteMeshData(Mesh* mesh);
+    void WriteMeshData(Mesh* mesh, int lodLevel = 0);
     void WriteTransform(Matrix3& tm);
 
 public:
@@ -32,7 +36,7 @@ public:
     const TCHAR* CopyrightMessage() override { return _T("Copyright 2024"); }
     const TCHAR* OtherMessage1() override { return _T(""); }
     const TCHAR* OtherMessage2() override { return _T(""); }
-    unsigned int Version() override { return 100; } // v1.00
+    unsigned int Version() override { return 100; }
     void ShowAbout(HWND hWnd) override { }
     int DoExport(const TCHAR* name, ExpInterface* ei, Interface* i, BOOL suppressPrompts = FALSE, DWORD options = 0) override;
 };
@@ -47,7 +51,7 @@ public:
     const TCHAR* Category() override { return _T("Export"); }
     const TCHAR* InternalName() override { return _T("C3DExporter"); }
     HINSTANCE HInstance() override { return hInstance; }
-    const TCHAR* NonLocalizedClassName() override { return ClassName(); }  // Add this line
+    const TCHAR* NonLocalizedClassName() override { return ClassName(); }
 };
 
 // Global function declaration

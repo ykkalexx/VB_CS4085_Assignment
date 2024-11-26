@@ -1,8 +1,5 @@
 #define NOMINMAX
 #include "C3DExporter.h"
-#include "decomp.h"
-#include "mesh.h"
-#include "mtl.h"
 
 // Global variable for DLL instance
 HINSTANCE hInstance;
@@ -31,90 +28,168 @@ __declspec(dllexport) ClassDesc* LibClassDesc(int i) {
 }
 __declspec(dllexport) ULONG LibVersion() { return VERSION_3DSMAX; }
 
-void C3DExporter::WriteMeshData(Mesh* mesh) {
-    // Write vertices
-    const int numVerts = mesh->getNumVerts(); // Get value before passing to fprintf
+void C3DExporter::WriteMeshData(Mesh* mesh, int lodLevel) {
+    if (!mesh || !exportFile) return;  // Add null checks
+    
+    fprintf(exportFile, "LOD %d\n", lodLevel);
+    
+    const int numVerts = mesh->getNumVerts();
     fprintf(exportFile, "VERTICES %d\n", numVerts);
+    
+    // Build normals safely
+    if (!mesh->normalsBuilt) {
+        mesh->buildNormals();
+    }
+    
+    // Get vertex normals more safely
+    MeshNormalSpec* normalSpec = mesh->GetSpecifiedNormals();
+    
     for (int i = 0; i < numVerts; i++) {
         Point3& v = mesh->getVert(i);
-        fprintf(exportFile, "v %.6f %.6f %.6f\n", v.x, v.y, v.z);
+        Point3 normal;
+        
+        // Safer normal computation
+        if (normalSpec && normalSpec->GetNumNormals() > i) {
+            // Use the specified normal from the MeshNormalSpec
+            normal = normalSpec->Normal(i);
+        } else {
+            // Fallback to face normal if vertex normal isn't available
+            int faceIndex = -1;
+            for (int f = 0; f < mesh->getNumFaces(); f++) {
+                Face& face = mesh->faces[f];
+                if (face.v[0] == i || face.v[1] == i || face.v[2] == i) {
+                    faceIndex = f;
+                    break;
+                }
+            }
+            if (faceIndex >= 0) {
+                normal = mesh->getFaceNormal(faceIndex);
+            } else {
+                normal = Point3(0.0f, 0.0f, 1.0f); // Default if no normal found
+            }
+        }
+        
+        fprintf(exportFile, "v %.6f %.6f %.6f vn %.6f %.6f %.6f\n", 
+                v.x, v.y, v.z,
+                normal.x, normal.y, normal.z);
     }
-
-    // Write faces
+    // Write faces more safely
     const int numFaces = mesh->getNumFaces();
     fprintf(exportFile, "FACES %d\n", numFaces);
     for (int i = 0; i < numFaces; i++) {
         Face& f = mesh->faces[i];
-        fprintf(exportFile, "f %d %d %d\n", f.v[0], f.v[1], f.v[2]);
+        // Validate vertex indices
+        if (f.v[0] >= numVerts || f.v[1] >= numVerts || f.v[2] >= numVerts) {
+            continue; // Skip invalid faces
+        }
+        DWORD smGroup = f.smGroup;
+        fprintf(exportFile, "f %d %d %d sm %d\n", f.v[0], f.v[1], f.v[2], smGroup);
     }
 
-    // Write normals if they exist
-    mesh->buildNormals();
-    fprintf(exportFile, "NORMALS %d\n", numFaces * 3);
-    for (int i = 0; i < numFaces; i++) {
-        for (int j = 0; j < 3; j++) {
-            Point3 normal = mesh->getFaceNormal(i);
-            fprintf(exportFile, "n %.6f %.6f %.6f\n", normal.x, normal.y, normal.z);
+    // Write UVs more safely
+    const int numMaps = mesh->getNumMaps();
+    for (int channel = 1; channel < numMaps; channel++) {
+        if (mesh->mapSupport(channel)) {
+            const int numTVerts = mesh->getNumMapVerts(channel);
+            if (numTVerts > 0 && mesh->mapVerts(channel)) {  // Add null check for UV data
+                fprintf(exportFile, "UV_CHANNEL %d\n", channel);
+                fprintf(exportFile, "UVS %d\n", numTVerts);
+                
+                UVVert* uvVerts = mesh->mapVerts(channel);
+                for (int i = 0; i < numTVerts; i++) {
+                    fprintf(exportFile, "uv %.6f %.6f\n", uvVerts[i].x, uvVerts[i].y);
+                }
+
+                TVFace* tf = mesh->mapFaces(channel);
+                if (tf) {  // Add null check for UV faces
+                    fprintf(exportFile, "UVFACES %d\n", numFaces);
+                    for (int i = 0; i < numFaces; i++) {
+                        // Validate UV indices
+                        if (tf[i].t[0] >= numTVerts || tf[i].t[1] >= numTVerts || tf[i].t[2] >= numTVerts) {
+                            continue; // Skip invalid UV faces
+                        }
+                        fprintf(exportFile, "uvf %d %d %d\n", tf[i].t[0], tf[i].t[1], tf[i].t[2]);
+                    }
+                }
+            }
         }
     }
 
-    // Write UVs if they exist
-    if (mesh->numTVerts > 0 && mesh->tvFace) {
-        const int numTVerts = mesh->numTVerts;
-        fprintf(exportFile, "UVS %d\n", numTVerts);
-        for (int i = 0; i < numTVerts; i++) {
-            UVVert& uv = mesh->tVerts[i];
-            fprintf(exportFile, "uv %.6f %.6f\n", uv.x, uv.y);
-        }
-
-        fprintf(exportFile, "UVFACES %d\n", numFaces);
-        for (int i = 0; i < numFaces; i++) {
-            TVFace& tf = mesh->tvFace[i];
-            fprintf(exportFile, "uvf %d %d %d\n", tf.t[0], tf.t[1], tf.t[2]);
-        }
-    }
+    // Write collision bounds more safely
+    Box3 bounds;
+    mesh->buildBoundingBox(); // Ensure bounds are built
+    bounds = mesh->getBoundingBox();
+    fprintf(exportFile, "COLLISION\n");
+    fprintf(exportFile, "bounds %.6f %.6f %.6f %.6f %.6f %.6f\n",
+            bounds.pmin.x, bounds.pmin.y, bounds.pmin.z,
+            bounds.pmax.x, bounds.pmax.y, bounds.pmax.z);
 }
+
 
 void C3DExporter::ExportMaterial(Mtl* mtl) {
     if (!mtl) return;
 
     fprintf(exportFile, "MATERIAL \"%ls\"\n", mtl->GetName().data());
     
-    // Export basic material properties
-    Color ambient = mtl->GetAmbient(0);       // Add time parameter
-    Color diffuse = mtl->GetDiffuse(0);       // Add time parameter
-    Color specular = mtl->GetSpecular(0);     // Add time parameter
-    float shininess = mtl->GetShininess(0);   // Add time parameter
-    float opacity = 1.0f - mtl->GetXParency(0); // Use GetXParency instead
+    if (mtl->ClassID() == Class_ID(DMTL_CLASS_ID, 0)) {
+        StdMat2* stdMtl = (StdMat2*)mtl; // Use StdMat2 instead of StdMat
+        
+        Color ambient = stdMtl->GetAmbient(0);
+        Color diffuse = stdMtl->GetDiffuse(0);
+        Color specular = stdMtl->GetSpecular(0);
+        float shininess = stdMtl->GetShininess(0);
+        float opacity = 1.0f - stdMtl->GetXParency(0);
+        float roughness = 1.0f - stdMtl->GetShinStr(0); // Use shininess strength
+        float metallic = stdMtl->GetSelfIllum(0);
 
-    fprintf(exportFile, "ambient %.6f %.6f %.6f\n", ambient.r, ambient.g, ambient.b);
-    fprintf(exportFile, "diffuse %.6f %.6f %.6f\n", diffuse.r, diffuse.g, diffuse.b);
-    fprintf(exportFile, "specular %.6f %.6f %.6f\n", specular.r, specular.g, specular.b);
-    fprintf(exportFile, "shininess %.6f\n", shininess);
-    fprintf(exportFile, "opacity %.6f\n", opacity);
+        fprintf(exportFile, "ambient %.6f %.6f %.6f\n", ambient.r, ambient.g, ambient.b);
+        fprintf(exportFile, "diffuse %.6f %.6f %.6f\n", diffuse.r, diffuse.g, diffuse.b);
+        fprintf(exportFile, "specular %.6f %.6f %.6f\n", specular.r, specular.g, specular.b);
+        fprintf(exportFile, "roughness %.6f\n", roughness);
+        fprintf(exportFile, "metallic %.6f\n", metallic);
+        fprintf(exportFile, "opacity %.6f\n", opacity);
+
+        // Export textures
+        for (int i = 0; i < stdMtl->NumSubTexmaps(); i++) {
+            Texmap* tex = stdMtl->GetSubTexmap(i);
+            if (tex && tex->ClassID() == Class_ID(BMTEX_CLASS_ID, 0)) {
+                BitmapTex* bmTex = (BitmapTex*)tex;
+                fprintf(exportFile, "texture %d \"%ls\"\n", i, bmTex->GetMapName());
+            }
+        }
+    }
 }
 
-void C3DExporter::ExportMesh(INode* node) {
-    ObjectState os = node->EvalWorldState(0);
-    if (!os.obj || !os.obj->CanConvertToType(Class_ID(TRIOBJ_CLASS_ID, 0)))
-        return;
+void C3DExporter::ExportMesh(INode* node, int lodLevel) {
+    if (!node || !exportFile) return;  // Add null checks
 
-    // Get the mesh
-    TriObject* tri = (TriObject*)os.obj->ConvertToType(0, Class_ID(TRIOBJ_CLASS_ID, 0));
+    ObjectState os = node->EvalWorldState(0);
+    if (!os.obj) return;
+
+    // Convert to tri object safely
+    TriObject* tri = nullptr;
+    if (os.obj->CanConvertToType(Class_ID(TRIOBJ_CLASS_ID, 0))) {
+        Object* conv = os.obj->ConvertToType(0, Class_ID(TRIOBJ_CLASS_ID, 0));
+        if (conv) {
+            tri = static_cast<TriObject*>(conv);
+        }
+    }
+
     if (!tri) return;
 
     Mesh* mesh = &tri->GetMesh();
+    if (!mesh) {
+        if (os.obj != tri) tri->DeleteThis();
+        return;
+    }
 
     fprintf(exportFile, "MESH \"%ls\"\n", node->GetName());
     
-    // Write transform
     Matrix3 tm = node->GetNodeTM(0);
     WriteTransform(tm);
+    WriteMeshData(mesh, lodLevel);
 
-    // Write mesh data
-    WriteMeshData(mesh);
-
-    // Export material if it exists
+    // Export material safely
     Mtl* mtl = node->GetMtl();
     if (mtl) {
         ExportMaterial(mtl);
@@ -127,15 +202,33 @@ void C3DExporter::ExportMesh(INode* node) {
 }
 
 void C3DExporter::ExportNode(INode* node) {
+    // Get original node name
+    TSTR nodeName = node->GetName();
+    
+    // Create UE5 compatible name (replace spaces with underscores)
+    TSTR ue5Name = nodeName;
+    ue5Name.Replace(_T(" "), _T("_")); // Corrected to use const wchar_t*
+
     // Export node name and transform
-    fprintf(exportFile, "NODE \"%ls\"\n", node->GetName());
+    fprintf(exportFile, "NODE \"%ls\"\n", ue5Name.data());
     Matrix3 tm = node->GetNodeTM(0);
     WriteTransform(tm);
 
     // Export mesh if this is a geometry object
     ObjectState os = node->EvalWorldState(0);
     if (os.obj && os.obj->SuperClassID() == GEOMOBJECT_CLASS_ID) {
-        ExportMesh(node);
+        // Export main mesh
+        ExportMesh(node, 0);  // LOD 0 is the base mesh
+        
+        // Look for and export LOD nodes
+        for (int i = 1; i < 4; i++) {  // Support LOD1-3
+            TSTR lodNodeName;
+            lodNodeName.printf(_T("%ls_LOD%d"), nodeName.data(), i);
+            INode* lodNode = ip->GetINodeByName(lodNodeName);
+            if (lodNode) {
+                ExportMesh(lodNode, i);
+            }
+        }
     }
 
     // Recursively process children
