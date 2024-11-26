@@ -1,0 +1,10 @@
+^C:\ASSIGNMENTS\VB_CS4085_ASSIGNMENT\3DSMAX_ATTEMPT2\BUILD\CMAKEFILES\414DA6D0A738385A63521EED7D4E0209\GENERATE.STAMP.RULE
+setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -SC:/Assignments/VB_CS4085_Assignment/3dsmax_attempt2 -BC:/Assignments/VB_CS4085_Assignment/3dsmax_attempt2/build --check-stamp-list CMakeFiles/generate.stamp.list --vs-solution-file C:/Assignments/VB_CS4085_Assignment/3dsmax_attempt2/build/C3DExporter.sln
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd

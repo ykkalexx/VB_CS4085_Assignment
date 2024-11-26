@@ -1,0 +1,3 @@
+C:/Assignments/VB_CS4085_Assignment/3dsmax_attempt2/build/CMakeFiles/C3DExporter.dir
+C:/Assignments/VB_CS4085_Assignment/3dsmax_attempt2/build/CMakeFiles/ALL_BUILD.dir
+C:/Assignments/VB_CS4085_Assignment/3dsmax_attempt2/build/CMakeFiles/ZERO_CHECK.dir

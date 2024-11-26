@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <CustomBuild Include="C:\Assignments\VB_CS4085_Assignment\3dsmax_attempt2\build\CMakeFiles\414da6d0a738385a63521eed7d4e0209\generate.stamp.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="CMake Rules">
+      <UniqueIdentifier>{CDBE1EBE-FAD6-3D09-9174-71AE6CD8B54F}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

@@ -175,24 +175,30 @@ struct FCustomFaceIndex
 
 bool Fformat3dModule::ParseObject(const TArray<FString>& Lines, int32& CurrentLine, FCustom3DObject& OutObject)
 {
-    OutObject.Name = Lines[CurrentLine].Replace(TEXT("node "), TEXT("")).Replace(TEXT("\""), TEXT(""));
+    // Parse object name and increment line
+    FString Name = Lines[CurrentLine].Replace(TEXT("node "), TEXT("")).Replace(TEXT("\""), TEXT(""));
+    OutObject.Name = Name;
     CurrentLine++;
+
+    // Skip through transform and material sections until we hit vertices
+    while (CurrentLine < Lines.Num() && !Lines[CurrentLine].StartsWith(TEXT("v ")))
+    {
+        CurrentLine++;
+    }
 
     TArray<FVector> Positions;
     TArray<FVector> Normals;
     TArray<FVector2D> UVs;
-    TArray<FCustomFaceIndex> FaceIndices;
 
-    UE_LOG(LogTemp, Warning, TEXT("Starting to parse object: %s"), *OutObject.Name);
-
-    while (CurrentLine < Lines.Num() && !Lines[CurrentLine].Contains(TEXT("}")))
+    // Now parse all vertices, normals, UVs and faces
+    while (CurrentLine < Lines.Num())
     {
         const FString& Line = Lines[CurrentLine];
 
         if (Line.StartsWith(TEXT("v ")))
         {
             TArray<FString> Values;
-            int32 NumElements = Line.ParseIntoArray(Values, TEXT(" "));
+            int32 NumParsed = Line.ParseIntoArray(Values, TEXT(" "));
             if (Values.Num() >= 4)
             {
                 FVector Position(
@@ -200,14 +206,12 @@ bool Fformat3dModule::ParseObject(const TArray<FString>& Lines, int32& CurrentLi
                     FCString::Atof(*Values[2]),
                     FCString::Atof(*Values[3]));
                 Positions.Add(Position);
-                UE_LOG(LogTemp, Warning, TEXT("Added vertex: X=%f, Y=%f, Z=%f"),
-                    Position.X, Position.Y, Position.Z);
             }
         }
         else if (Line.StartsWith(TEXT("vn ")))
         {
             TArray<FString> Values;
-            int32 NumElements = Line.ParseIntoArray(Values, TEXT(" "));
+            int32 NumParsed = Line.ParseIntoArray(Values, TEXT(" "));
             if (Values.Num() >= 4)
             {
                 Normals.Add(FVector(
@@ -219,7 +223,7 @@ bool Fformat3dModule::ParseObject(const TArray<FString>& Lines, int32& CurrentLi
         else if (Line.StartsWith(TEXT("vt ")))
         {
             TArray<FString> Values;
-            int32 NumElements = Line.ParseIntoArray(Values, TEXT(" "));
+            int32 NumParsed = Line.ParseIntoArray(Values, TEXT(" "));
             if (Values.Num() >= 3)
             {
                 UVs.Add(FVector2D(
@@ -230,44 +234,30 @@ bool Fformat3dModule::ParseObject(const TArray<FString>& Lines, int32& CurrentLi
         else if (Line.StartsWith(TEXT("f ")))
         {
             TArray<FString> FaceElements;
-            int32 NumElements = Line.ParseIntoArray(FaceElements, TEXT(" "));
+            int32 NumParsed = Line.ParseIntoArray(FaceElements, TEXT(" "));
 
-            // Process face indices (skip "f" at index 0 and "mat_id X" at the end)
-            for (int32 i = 1; i <= 3; i++)
+            // Skip the first element ("f") and the last element ("mat_id X")
+            for (int32 i = 1; i < FaceElements.Num() - 2; i++)
             {
-                if (i >= FaceElements.Num()) continue;
+                FString Element = FaceElements[i];
+                FString NoDecimal = Element.Replace(TEXT(".0"), TEXT(""));
 
-                FString VertexData = FaceElements[i];
                 TArray<FString> Indices;
-                VertexData.ParseIntoArray(Indices, TEXT("/"));
+                int32 NumIndices = NoDecimal.ParseIntoArray(Indices, TEXT("/"));
 
-                FCustomFaceIndex FaceIndex;
-                FaceIndex.VertexIndex = -1;
-                FaceIndex.UVIndex = -1;
-                FaceIndex.NormalIndex = -1;
-
-                if (Indices.Num() >= 1)
+                if (Indices.Num() > 0)
                 {
-                    // Remove .0 from the indices
-                    FString VertIndexStr = Indices[0].Replace(TEXT(".0"), TEXT(""));
-                    FaceIndex.VertexIndex = FCString::Atoi(*VertIndexStr) - 1;
-                }
-                if (Indices.Num() >= 2)
-                {
-                    FString UVIndexStr = Indices[1].Replace(TEXT(".0"), TEXT(""));
-                    FaceIndex.UVIndex = FCString::Atoi(*UVIndexStr) - 1;
-                }
-                if (Indices.Num() >= 3)
-                {
-                    FString NormalIndexStr = Indices[2].Replace(TEXT(".0"), TEXT(""));
-                    FaceIndex.NormalIndex = FCString::Atoi(*NormalIndexStr) - 1;
-                }
-
-                if (FaceIndex.VertexIndex >= 0)
-                {
-                    FaceIndices.Add(FaceIndex);
+                    int32 VertexIndex = FCString::Atoi(*Indices[0]) - 1;
+                    if (VertexIndex >= 0)
+                    {
+                        OutObject.Indices.Add(VertexIndex);
+                    }
                 }
             }
+        }
+        else if (Line.StartsWith(TEXT("# Collision"))) // Stop when we hit collision section
+        {
+            break;
         }
 
         CurrentLine++;
@@ -278,49 +268,35 @@ bool Fformat3dModule::ParseObject(const TArray<FString>& Lines, int32& CurrentLi
     {
         FCustom3DVertex Vertex;
         Vertex.Position = Positions[i];
+        Vertex.Normal = (i < Normals.Num()) ? Normals[i] : FVector::UpVector;
+        Vertex.UV = (i < UVs.Num()) ? UVs[i] : FVector2D::ZeroVector;
         OutObject.Vertices.Add(Vertex);
     }
 
-    // Process face indices
-    for (const FCustomFaceIndex& FaceIndex : FaceIndices)
-    {
-        OutObject.Indices.Add(FaceIndex.VertexIndex);
+    UE_LOG(LogTemp, Warning, TEXT("Parsed %s: %d vertices, %d indices"),
+        *OutObject.Name, OutObject.Vertices.Num(), OutObject.Indices.Num());
 
-        // Update vertex attributes
-        if (FaceIndex.VertexIndex >= 0 && FaceIndex.VertexIndex < OutObject.Vertices.Num())
-        {
-            if (FaceIndex.NormalIndex >= 0 && FaceIndex.NormalIndex < Normals.Num())
-            {
-                OutObject.Vertices[FaceIndex.VertexIndex].Normal = Normals[FaceIndex.NormalIndex];
-            }
-            if (FaceIndex.UVIndex >= 0 && FaceIndex.UVIndex < UVs.Num())
-            {
-                OutObject.Vertices[FaceIndex.VertexIndex].UV = UVs[FaceIndex.UVIndex];
-            }
-        }
-    }
-
-    UE_LOG(LogTemp, Warning, TEXT("Parsed vertices: %d, indices: %d"), OutObject.Vertices.Num(), OutObject.Indices.Num());
-
-    CurrentLine++;
     return true;
 }
 
 bool Fformat3dModule::CreateStaticMesh(const FCustom3DObject& Object, UObject* Parent, UStaticMesh*& OutMesh)
 {
-    FString MeshName = Object.Name + TEXT("_Mesh");
+    FString MeshName = FPaths::GetBaseFilename(Parent->GetName());
     OutMesh = NewObject<UStaticMesh>(Parent, *MeshName, RF_Public | RF_Standalone);
+
+    // Initialize render data first
+    OutMesh->InitResources();
 
     // Create mesh description
     FMeshDescription* MeshDesc = new FMeshDescription();
-    FStaticMeshAttributes Attributes(*MeshDesc);
-    Attributes.Register();
+    FStaticMeshAttributes(MeshDesc).Register();
 
-    // Add vertices
+    // Add vertices and faces
     TArray<FVertexID> VertexIDs;
     TVertexAttributesRef<FVector3f> VertexPositions =
         MeshDesc->VertexAttributes().GetAttributesRef<FVector3f>(MeshAttribute::Vertex::Position);
 
+    // Add vertices
     for (const FCustom3DVertex& Vertex : Object.Vertices)
     {
         FVertexID VertexID = MeshDesc->CreateVertex();
@@ -328,7 +304,6 @@ bool Fformat3dModule::CreateStaticMesh(const FCustom3DObject& Object, UObject* P
         VertexIDs.Add(VertexID);
     }
 
-    // Create polygon group
     FPolygonGroupID PolygonGroupID = MeshDesc->CreatePolygonGroup();
 
     // Create triangles
@@ -337,78 +312,45 @@ bool Fformat3dModule::CreateStaticMesh(const FCustom3DObject& Object, UObject* P
         if (i + 2 >= Object.Indices.Num()) continue;
 
         TArray<FVertexInstanceID> VertexInstanceIDs;
-        TVertexInstanceAttributesRef<FVector3f> InstanceNormals =
-            MeshDesc->VertexInstanceAttributes().GetAttributesRef<FVector3f>(MeshAttribute::VertexInstance::Normal);
-        TVertexInstanceAttributesRef<FVector2f> InstanceUVs =
-            MeshDesc->VertexInstanceAttributes().GetAttributesRef<FVector2f>(MeshAttribute::VertexInstance::TextureCoordinate);
 
-        bool ValidTriangle = true;
         for (int32 j = 0; j < 3; ++j)
         {
             int32 Index = Object.Indices[i + j];
-            if (Index < 0 || Index >= Object.Vertices.Num())
-            {
-                UE_LOG(LogTemp, Error, TEXT("Invalid vertex index: %d"), Index);
-                ValidTriangle = false;
-                break;
-            }
+            if (Index < 0 || Index >= Object.Vertices.Num()) continue;
 
             FVertexID VertexID = VertexIDs[Index];
             FVertexInstanceID InstanceID = MeshDesc->CreateVertexInstance(VertexID);
 
-            // Use the actual normal from the vertex
-            InstanceNormals.Set(InstanceID, FVector3f(Object.Vertices[Index].Normal));
-            InstanceUVs.Set(InstanceID, 0, FVector2f(Object.Vertices[Index].UV));
+            MeshDesc->VertexInstanceAttributes().GetAttributesRef<FVector3f>(MeshAttribute::VertexInstance::Normal)
+                .Set(InstanceID, FVector3f(Object.Vertices[Index].Normal));
+            MeshDesc->VertexInstanceAttributes().GetAttributesRef<FVector2f>(MeshAttribute::VertexInstance::TextureCoordinate)
+                .Set(InstanceID, 0, FVector2f(Object.Vertices[Index].UV));
 
             VertexInstanceIDs.Add(InstanceID);
         }
 
-        if (ValidTriangle && VertexInstanceIDs.Num() == 3)
+        if (VertexInstanceIDs.Num() == 3)
         {
-            FPolygonID PolygonID = MeshDesc->CreatePolygon(PolygonGroupID, VertexInstanceIDs);
-            MeshDesc->ComputePolygonTriangulation(PolygonID);
+            MeshDesc->CreatePolygon(PolygonGroupID, VertexInstanceIDs);
         }
     }
 
-    // Add material
-    UMaterial* DefaultMaterial = UMaterial::GetDefaultMaterial(MD_Surface);
-    FStaticMaterial StaticMat(DefaultMaterial);
-    StaticMat.MaterialInterface = DefaultMaterial;
-    StaticMat.UVChannelData = FMeshUVChannelInfo(true);
-    OutMesh->GetStaticMaterials().Add(StaticMat);
-
-    // Set up render data
-    OutMesh->NeverStream = true;
-
-    // Source model setup
+    // Setup source model
     FStaticMeshSourceModel& SrcModel = OutMesh->AddSourceModel();
-    SrcModel.BuildSettings.bRecomputeNormals = true;
+    SrcModel.BuildSettings.bRecomputeNormals = false;
     SrcModel.BuildSettings.bRecomputeTangents = true;
-    SrcModel.BuildSettings.bUseMikkTSpace = true;
-    SrcModel.BuildSettings.bGenerateLightmapUVs = true;
-    SrcModel.BuildSettings.bRemoveDegenerates = true;
-    SrcModel.BuildSettings.bUseHighPrecisionTangentBasis = true;
+    SrcModel.BuildSettings.bRemoveDegenerates = false;
+    SrcModel.BuildSettings.bUseMikkTSpace = false;
     SrcModel.BuildSettings.bUseFullPrecisionUVs = true;
 
-    // Set up lightmap
-    OutMesh->LightMapResolution = 64;
-    OutMesh->LightMapCoordinateIndex = 1;
+    // Add default material
+    OutMesh->GetStaticMaterials().Add(FStaticMaterial(UMaterial::GetDefaultMaterial(MD_Surface)));
 
     // Build the mesh
-    TArray<const FMeshDescription*> MeshDescriptionPtrs;
-    MeshDescriptionPtrs.Add(MeshDesc);
-    OutMesh->BuildFromMeshDescriptions(MeshDescriptionPtrs);
-
-    // Clean up
+    OutMesh->BuildFromMeshDescription(*MeshDesc);
     delete MeshDesc;
 
-    // Set up collision and build
-    OutMesh->CreateBodySetup();
-    OutMesh->Build();
     OutMesh->PostEditChange();
-    OutMesh->MarkPackageDirty();
-
-    UE_LOG(LogTemp, Warning, TEXT("Mesh creation completed"));
 
     return true;
 }
